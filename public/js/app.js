@@ -347,7 +347,7 @@
 
     // Check favorite status for modal
     const isFav = favorites.includes(game.id);
-    modalFavBtn.textContent = isFav ? '★ FAVORITED' : '☆ FAVORITE';
+    updateModalFavButton(isFav);
 
     // Virtual Gamepad handling
     if (!virtualGamepadInstance) {
@@ -364,8 +364,25 @@
       modalGamepadBtn.classList.remove('active');
     }
 
+    // Reset modal scroll position to top
+    gameModal.scrollTop = 0;
+
     gameModal.classList.add('active');
     document.body.style.overflow = 'hidden';
+  }
+
+  // Update Favorite button in Player Modal
+  function updateModalFavButton(isFav) {
+    const iconEl = modalFavBtn.querySelector('.btn-icon');
+    const textEl = modalFavBtn.querySelector('.btn-text');
+    if (iconEl && textEl) {
+      iconEl.textContent = isFav ? '★' : '☆';
+      textEl.textContent = isFav ? 'FAVORITED' : 'FAVORITE';
+    } else {
+      modalFavBtn.innerHTML = `<span class="btn-icon">${isFav ? '★' : '☆'}</span><span class="btn-text">${isFav ? 'FAVORITED' : 'FAVORITE'}</span>`;
+    }
+    modalFavBtn.classList.toggle('active', isFav);
+    modalFavBtn.title = isFav ? 'Favorited' : 'Favorite Game';
   }
 
   // Close Game Player Modal
@@ -451,7 +468,7 @@
     if (activeGame) {
       toggleFavorite(activeGame.id);
       const isFav = favorites.includes(activeGame.id);
-      modalFavBtn.textContent = isFav ? '★ FAVORITED' : '☆ FAVORITE';
+      updateModalFavButton(isFav);
     }
   });
 
