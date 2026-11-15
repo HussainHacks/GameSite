@@ -49,17 +49,82 @@ body {
   flex-direction: column;
 }
 
-/* Background Cyber Grid */
+/* Background Cyber Grid — Dual Layer Animated Drift */
 body::before {
   content: '';
   position: fixed;
-  inset: 0;
+  inset: -64px;
   background-image: 
-    linear-gradient(rgba(0, 240, 255, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0, 240, 255, 0.03) 1px, transparent 1px);
+    linear-gradient(rgba(0, 240, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 240, 255, 0.035) 1px, transparent 1px);
   background-size: 32px 32px;
   pointer-events: none;
   z-index: 0;
+  animation: bg-drift-1 50s linear infinite;
+  will-change: transform;
+}
+
+body::after {
+  content: '';
+  position: fixed;
+  inset: -128px;
+  background-image: 
+    linear-gradient(rgba(255, 0, 127, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 0, 127, 0.02) 1px, transparent 1px);
+  background-size: 64px 64px;
+  pointer-events: none;
+  z-index: 0;
+  animation: bg-drift-2 80s linear infinite;
+  will-change: transform;
+}
+
+@keyframes bg-drift-1 {
+  0% { transform: translate3d(0, 0, 0); }
+  100% { transform: translate3d(32px, 32px, 0); }
+}
+
+@keyframes bg-drift-2 {
+  0% { transform: translate3d(0, 0, 0); }
+  100% { transform: translate3d(-64px, 64px, 0); }
+}
+
+/* Scanline Ambient Overlay & Travelling Band */
+.scanline-overlay {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  overflow: hidden;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0) 0px,
+    rgba(255, 255, 255, 0) 2px,
+    rgba(0, 0, 0, 0.18) 3px,
+    rgba(0, 0, 0, 0.18) 4px
+  );
+  opacity: 0.5;
+}
+
+.scanline-overlay::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 120px;
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    rgba(0, 240, 255, 0.04) 50%,
+    transparent 100%
+  );
+  animation: scanline-sweep 12s linear infinite;
+  will-change: transform;
+}
+
+@keyframes scanline-sweep {
+  0% { transform: translate3d(0, -120px, 0); }
+  100% { transform: translate3d(0, 100vh, 0); }
 }
 
 /* Header */
@@ -111,6 +176,32 @@ body::before {
   color: var(--neon-cyan);
   text-shadow: 0 0 10px var(--neon-cyan);
   line-height: 1.1;
+  display: inline-block;
+  animation: title-glitch 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) 1 forwards,
+             neon-flicker 14s ease-in-out infinite 0.6s;
+  will-change: transform, opacity;
+}
+
+@keyframes title-glitch {
+  0%   { transform: translate3d(0, 0, 0); opacity: 0.85; }
+  15%  { transform: translate3d(-2px, 1px, 0); opacity: 1; }
+  30%  { transform: translate3d(2px, -1px, 0); opacity: 0.9; }
+  45%  { transform: translate3d(-1px, 0, 0); opacity: 1; }
+  60%  { transform: translate3d(1px, 1px, 0); opacity: 0.95; }
+  75%  { transform: translate3d(0, 0, 0); opacity: 1; }
+  100% { transform: translate3d(0, 0, 0); opacity: 1; }
+}
+
+@keyframes neon-flicker {
+  0%, 91%, 93.5%, 95.5%, 100% {
+    opacity: 1;
+  }
+  92% {
+    opacity: 0.65;
+  }
+  94.5% {
+    opacity: 0.8;
+  }
 }
 
 .brand-text span {
@@ -221,6 +312,8 @@ body::before {
   margin: 14px auto 0;
   padding: 0 16px;
   width: 100%;
+  position: relative;
+  z-index: 2;
 }
 
 .search-box {
@@ -269,6 +362,8 @@ body::before {
   align-items: center;
   flex-wrap: wrap;
   gap: 8px;
+  position: relative;
+  z-index: 2;
 }
 
 .quick-filters {
@@ -305,21 +400,76 @@ body::before {
   outline: none;
 }
 
-/* Stats Counter Banner */
+/* Stats Counter Banner with Pulse Dot & Moving Gradient Border */
 .stats-banner {
   max-width: 1300px;
   margin: 12px auto 0;
-  padding: 0 16px;
+  padding: 8px 16px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
   font-size: 12px;
   color: var(--text-dim);
+  position: relative;
+  z-index: 2;
+  overflow: hidden;
+  background: rgba(14, 18, 32, 0.45);
+  border: 1px solid rgba(0, 240, 255, 0.12);
+  border-radius: 6px;
 }
+
+.stats-banner::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: -100%;
+  width: 200%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent 0%, var(--neon-cyan) 35%, var(--neon-pink) 65%, transparent 100%);
+  animation: banner-border-sweep 8s linear infinite;
+  will-change: transform;
+}
+
+@keyframes banner-border-sweep {
+  0%   { transform: translate3d(0, 0, 0); }
+  100% { transform: translate3d(50%, 0, 0); }
+}
+
 .stat-status {
   white-space: nowrap;
 }
+
+.status-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--neon-cyan);
+  font-weight: 700;
+}
+
+.status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--neon-cyan);
+  box-shadow: 0 0 8px var(--neon-cyan);
+  display: inline-block;
+  animation: dot-pulse 2.2s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+
+@keyframes dot-pulse {
+  0%, 100% {
+    transform: scale(0.85);
+    opacity: 0.55;
+  }
+  50% {
+    transform: scale(1.2);
+    opacity: 1;
+  }
+}
+
 .stat-divider {
   color: rgba(0, 240, 255, 0.3);
   font-weight: 700;
@@ -338,6 +488,8 @@ body::before {
   margin: 16px auto;
   padding: 0 16px 80px;
   width: 100%;
+  position: relative;
+  z-index: 2;
 }
 
 .games-grid {
@@ -363,15 +515,34 @@ body::before {
   flex-direction: column;
   position: relative;
   cursor: pointer;
-  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease, border-color 0.2s;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.25s ease,
+              border-color 0.25s ease;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+}
+
+/* Staggered rise and fade on initial mount */
+.game-card.card-mount-anim {
+  animation: card-rise-fade 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+  will-change: transform, opacity;
+}
+
+@keyframes card-rise-fade {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 16px, 0);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
 }
 
 .game-card:hover,
 .game-card:focus-visible {
-  transform: translateY(-5px);
+  transform: translate3d(0, -5px, 0);
   border-color: var(--neon-cyan);
-  box-shadow: var(--glow-cyan);
+  box-shadow: 0 8px 24px rgba(0, 240, 255, 0.35), 0 0 12px rgba(0, 240, 255, 0.25);
 }
 
 .game-thumb-wrapper {
@@ -382,17 +553,87 @@ body::before {
   overflow: hidden;
 }
 
+/* Thumbnail Loading Shimmer */
+.game-thumb-wrapper::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    rgba(14, 18, 34, 0.9) 0%,
+    rgba(32, 42, 78, 0.9) 50%,
+    rgba(14, 18, 34, 0.9) 100%
+  );
+  transform: translate3d(-100%, 0, 0);
+  animation: thumb-shimmer 1.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  pointer-events: none;
+  z-index: 0;
+  will-change: transform;
+}
+
+@keyframes thumb-shimmer {
+  0%   { transform: translate3d(-100%, 0, 0); }
+  100% { transform: translate3d(100%, 0, 0); }
+}
+
+/* Thumbnail Hover Shine Sweep */
+.game-thumb-wrapper::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -150%;
+  width: 100%;
+  height: 200%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.2) 50%,
+    transparent 100%
+  );
+  transform: rotate(30deg) translate3d(0, 0, 0);
+  pointer-events: none;
+  opacity: 0;
+  z-index: 4;
+}
+
+.game-card:hover .game-thumb-wrapper::after,
+.game-card:focus-visible .game-thumb-wrapper::after {
+  opacity: 1;
+  animation: shine-sweep 0.7s ease-out 1 forwards;
+  will-change: transform, opacity;
+}
+
+@keyframes shine-sweep {
+  0%   { transform: rotate(30deg) translate3d(-100%, 0, 0); opacity: 0; }
+  15%  { opacity: 1; }
+  100% { transform: rotate(30deg) translate3d(350%, 0, 0); opacity: 0; }
+}
+
 .game-thumb-canvas,
 .game-thumb-img {
   width: 100%;
   height: 100%;
   object-fit: cover;
   display: block;
-  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  z-index: 1;
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease;
 }
 
-.game-card:hover .game-thumb-img {
-  transform: scale(1.05);
+.game-thumb-img {
+  opacity: 0;
+}
+
+.game-thumb-img.loaded,
+.game-thumb-canvas {
+  opacity: 1;
+}
+
+.game-card:hover .game-thumb-img,
+.game-card:focus-visible .game-thumb-img,
+.game-card:hover .game-thumb-canvas,
+.game-card:focus-visible .game-thumb-canvas {
+  transform: scale(1.04);
 }
 
 .card-badges {
@@ -483,7 +724,7 @@ body::before {
 .rating-val { color: var(--neon-yellow); }
 .plays-val { color: var(--neon-cyan); }
 
-/* Fullscreen Game Player Modal */
+/* Fullscreen Game Player Modal — Smooth Scale & Fade */
 .game-modal {
   position: fixed;
   inset: 0;
@@ -493,8 +734,10 @@ body::before {
   display: flex;
   flex-direction: column;
   opacity: 0;
+  transform: scale(0.97);
   pointer-events: none;
-  transition: opacity 0.25s ease;
+  transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   overflow-y: auto;
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
@@ -502,7 +745,12 @@ body::before {
 
 .game-modal.active {
   opacity: 1;
+  transform: scale(1);
   pointer-events: auto;
+}
+
+.game-modal:fullscreen {
+  transform: none !important;
 }
 
 .modal-header {
@@ -606,6 +854,29 @@ body::before {
   justify-content: center;
   background: #000;
   overflow: hidden;
+}
+
+/* Viewport Border Breathing Glow */
+.modal-viewport::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-top: 1px solid var(--neon-cyan);
+  border-bottom: 1px solid var(--neon-cyan);
+  box-shadow: inset 0 0 25px rgba(0, 240, 255, 0.25);
+  opacity: 0.3;
+  z-index: 5;
+}
+
+.game-modal.active .modal-viewport::after {
+  animation: viewport-breathing-glow 4s ease-in-out infinite;
+  will-change: opacity;
+}
+
+@keyframes viewport-breathing-glow {
+  0%, 100% { opacity: 0.25; }
+  50%      { opacity: 0.75; }
 }
 
 .game-iframe {
@@ -815,4 +1086,17 @@ body::before {
   font-size: 20px;
   color: var(--neon-pink);
   margin-bottom: 8px;
+}
+
+/* Accessibility — Respect prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    animation: none !important;
+    transition: none !important;
+  }
 }

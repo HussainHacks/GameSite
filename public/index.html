@@ -13,10 +13,13 @@
   <link rel="icon" type="image/svg+xml" href="/assets/icons/icon-192.svg">
   <link rel="apple-touch-icon" href="/assets/icons/icon-192.svg">
 
-  <link rel="stylesheet" href="/css/cyberpunk.css?v=3">
-  <link rel="stylesheet" href="/css/gamepad.css?v=3">
+  <link rel="stylesheet" href="/css/cyberpunk.css?v=4">
+  <link rel="stylesheet" href="/css/gamepad.css?v=4">
 </head>
 <body>
+
+  <!-- Cyberpunk Scanline Ambient Overlay -->
+  <div class="scanline-overlay" aria-hidden="true"></div>
 
   <!-- Cyberpunk Top Navigation Bar -->
   <header class="cyber-header">
@@ -85,7 +88,7 @@
 
   <!-- Live Status & Counter Banner -->
   <div class="stats-banner">
-    <div class="stat-status">MATRIX STATUS: <span style="color: #00f0ff;">CONNECTED</span></div>
+    <div class="stat-status">MATRIX STATUS: <span class="status-indicator"><span class="status-dot"></span>CONNECTED</span></div>
     <span class="stat-divider">//</span>
     <div class="games-counter" id="gamesCount">0 GAMES ONLINE</div>
   </div>
@@ -171,8 +174,8 @@
   </nav>
 
   <!-- Scripts -->
-  <script src="/js/games-data.js?v=3"></script>
-  <script src="/js/gamepad.js?v=3"></script>
-  <script src="/js/app.js?v=3"></script>
+  <script src="/js/games-data.js?v=4"></script>
+  <script src="/js/gamepad.js?v=4"></script>
+  <script src="/js/app.js?v=4"></script>
 </body>
 </html>

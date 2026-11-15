@@ -240,6 +240,7 @@
   }
 
   // Render Games Grid
+  let isFirstGridMount = true;
   function renderGrid() {
     const games = getFilteredGames();
     gamesCountEl.textContent = `${games.length} GAMES ONLINE`;
@@ -258,15 +259,20 @@
     gamesGrid.innerHTML = '';
     const fragment = document.createDocumentFragment();
 
-    games.forEach(game => {
+    games.forEach((game, index) => {
       const card = document.createElement('div');
       card.className = 'game-card';
+      if (isFirstGridMount) {
+        card.classList.add('card-mount-anim');
+        const staggerIdx = Math.min(index, 12);
+        card.style.animationDelay = `${staggerIdx * 35}ms`;
+      }
       card.dataset.id = game.id;
 
       const isFav = favorites.includes(game.id);
       const hasRealThumb = !!(game.thumbnail && game.thumbnailStatus === 'present');
       const thumbMarkup = hasRealThumb
-        ? `<img src="${game.thumbnail}" loading="lazy" class="game-thumb-img" alt="${game.title}">`
+        ? `<img src="${game.thumbnail}" loading="lazy" class="game-thumb-img" alt="${game.title}" onload="this.classList.add('loaded')">`
         : `<canvas class="game-thumb-canvas" width="220" height="138"></canvas>`;
 
       card.innerHTML = `
@@ -288,6 +294,13 @@
           </div>
         </div>
       `;
+
+      if (hasRealThumb) {
+        const imgEl = card.querySelector('.game-thumb-img');
+        if (imgEl && imgEl.complete) {
+          imgEl.classList.add('loaded');
+        }
+      }
 
       // Render canvas thumbnail only if real thumbnail is missing
       if (!hasRealThumb) {
@@ -312,6 +325,7 @@
     });
 
     gamesGrid.appendChild(fragment);
+    isFirstGridMount = false;
   }
 
   // Toggle Favorite
