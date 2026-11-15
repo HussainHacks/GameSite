@@ -30,7 +30,7 @@
         </div>
         <div class="brand-text">
           <h1>NEON ARCADE</h1>
-          <span>CYBERPUNK // 100+ OPEN SOURCE GAMES</span>
+          <span id="headerSubtitle">CYBERPUNK // <span id="headerGameCount">0</span> OPEN SOURCE GAMES</span>
         </div>
       </div>
 
@@ -48,7 +48,7 @@
   <!-- Sticky Horizontal Category Ribbon -->
   <nav class="category-nav">
     <div class="category-track">
-      <button class="cat-pill active" data-cat="all">⚡ ALL CORES (110)</button>
+      <button class="cat-pill active" data-cat="all">⚡ ALL CORES <span id="allCoresCount">(0)</span></button>
       <button class="cat-pill" data-cat="arcade">👾 ARCADE & RETRO</button>
       <button class="cat-pill" data-cat="puzzle">🧩 PUZZLE & BRAIN</button>
       <button class="cat-pill" data-cat="action">⚔️ ACTION & PLATFORM</button>
@@ -63,7 +63,7 @@
   <!-- Search Matrix Input -->
   <section class="search-container">
     <div class="search-box">
-      <input type="text" id="searchInput" class="search-input" placeholder="Search 100+ cyber games, tags, or genres..." autocomplete="off">
+      <input type="text" id="searchInput" class="search-input" placeholder="Search cyber games, tags, or genres..." autocomplete="off">
       <button class="search-clear-btn" id="searchClearBtn">&times;</button>
     </div>
   </section>
@@ -72,14 +72,12 @@
   <section class="filter-tags-row">
     <div class="quick-filters">
       <button class="filter-chip" data-filter="touch">👆 TOUCH OPTIMIZED</button>
-      <button class="filter-chip" data-filter="rated">⭐ TOP RATED 4.8+</button>
       <button class="filter-chip" data-filter="local">💾 OFFLINE BUILT-IN</button>
     </div>
 
     <div class="sort-box">
       <select id="sortSelect" class="sort-select">
         <option value="popular">SORT: MOST POPULAR</option>
-        <option value="rating">SORT: HIGHEST RATED</option>
         <option value="title">SORT: TITLE (A - Z)</option>
       </select>
     </div>
@@ -88,7 +86,7 @@
   <!-- Live Status & Counter Banner -->
   <div class="stats-banner">
     <div>MATRIX STATUS: <span style="color: #00f0ff;">CONNECTED</span></div>
-    <div class="games-counter" id="gamesCount">110 GAMES ONLINE</div>
+    <div class="games-counter" id="gamesCount">0 GAMES ONLINE</div>
   </div>
 
   <!-- Main Game Cards Grid -->

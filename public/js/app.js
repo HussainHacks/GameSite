@@ -213,22 +213,30 @@
     // Quick Filters
     if (activeQuickFilter === 'touch') {
       list = list.filter(g => g.touchNative === true);
-    } else if (activeQuickFilter === 'rated') {
-      list = list.filter(g => g.rating >= 4.8);
     } else if (activeQuickFilter === 'local') {
       list = list.filter(g => !!g.localUrl);
     }
 
     // Sorting
     list = [...list].sort((a, b) => {
-      if (sortBy === 'rating') return b.rating - a.rating;
       if (sortBy === 'title') return a.title.localeCompare(b.title);
-      // Popular (default)
-      const parsePlays = s => parseInt(s.replace(/[^0-9]/g, ''), 10) || 0;
-      return parsePlays(b.plays) - parsePlays(a.plays);
+      // Popular (default by plays)
+      const aPlays = typeof a.plays === 'number' ? a.plays : 0;
+      const bPlays = typeof b.plays === 'number' ? b.plays : 0;
+      return bPlays - aPlays;
     });
 
     return list;
+  }
+
+  // Update Dynamic Counts
+  function updateDynamicCounts() {
+    const totalCount = (window.GAMES_CATALOG || []).length;
+    const headerGameCount = document.getElementById('headerGameCount');
+    if (headerGameCount) headerGameCount.textContent = totalCount;
+    const allCoresCount = document.getElementById('allCoresCount');
+    if (allCoresCount) allCoresCount.textContent = `(${totalCount})`;
+    if (searchInput) searchInput.placeholder = `Search ${totalCount} verified cyber games, tags, or genres...`;
   }
 
   // Render Games Grid
@@ -256,10 +264,14 @@
       card.dataset.id = game.id;
 
       const isFav = favorites.includes(game.id);
+      const hasRealThumb = !!(game.thumbnail && game.thumbnailStatus === 'present');
+      const thumbMarkup = hasRealThumb
+        ? `<img src="${game.thumbnail}" loading="lazy" class="game-thumb-img" alt="${game.title}">`
+        : `<canvas class="game-thumb-canvas" width="220" height="138"></canvas>`;
 
       card.innerHTML = `
         <div class="game-thumb-wrapper">
-          <canvas class="game-thumb-canvas" width="220" height="138"></canvas>
+          ${thumbMarkup}
           <div class="card-badges">
             <span class="badge-tag badge-${game.category}">${game.category}</span>
             <span class="badge-tag" style="color: #fcee0a; border-color: #fcee0a;">${game.license}</span>
@@ -272,15 +284,16 @@
         <div class="game-info">
           <div class="game-title" title="${game.title}">${game.title}</div>
           <div class="game-meta">
-            <span class="rating-val">★ ${game.rating}</span>
-            <span class="plays-val">⚡ ${game.plays}</span>
+            <span class="plays-val">⚡ ${game.plays} plays</span>
           </div>
         </div>
       `;
 
-      // Render canvas thumbnail
-      const canvasEl = card.querySelector('.game-thumb-canvas');
-      renderCyberThumbnail(canvasEl, game);
+      // Render canvas thumbnail only if real thumbnail is missing
+      if (!hasRealThumb) {
+        const canvasEl = card.querySelector('.game-thumb-canvas');
+        if (canvasEl) renderCyberThumbnail(canvasEl, game);
+      }
 
       // Card click opens game
       card.addEventListener('click', (e) => {
@@ -526,6 +539,7 @@
     });
   }
 
-  // Initialize Initial Grid
+  // Initialize Dynamic Counts & Initial Grid
+  updateDynamicCounts();
   renderGrid();
 })();
