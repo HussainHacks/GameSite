@@ -1,20 +1,21 @@
-const CACHE_NAME = 'neon-arcade-v1';
+const CACHE_NAME = 'neon-arcade-v2';
 const ASSETS = [
   '/',
   '/index.html',
   '/manifest.json',
-  '/css/cyberpunk.css',
-  '/css/gamepad.css',
-  '/js/games-data.js',
-  '/js/gamepad.js',
-  '/js/app.js',
+  '/css/cyberpunk.css?v=2',
+  '/css/gamepad.css?v=2',
+  '/js/games-data.js?v=2',
+  '/js/gamepad.js?v=2',
+  '/js/app.js?v=2',
   '/assets/icons/icon-192.svg',
   '/assets/icons/icon-512.svg'
 ];
 
 self.addEventListener('install', (e) => {
+  self.skipWaiting();
   e.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS)).then(() => self.skipWaiting())
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS)).catch(() => {})
   );
 });
 
@@ -29,23 +30,41 @@ self.addEventListener('activate', (e) => {
 });
 
 self.addEventListener('fetch', (e) => {
-  // Network first for API, cache first for static assets
-  if (e.request.url.includes('/api/')) {
+  const url = new URL(e.request.url);
+
+  // Network first for API, HTML navigation, and JS data
+  if (
+    e.request.mode === 'navigate' ||
+    url.pathname === '/' ||
+    url.pathname.endsWith('.html') ||
+    url.pathname.startsWith('/js/') ||
+    url.pathname.startsWith('/api/')
+  ) {
     e.respondWith(
-      fetch(e.request).catch(() => caches.match(e.request))
-    );
-  } else {
-    e.respondWith(
-      caches.match(e.request).then((res) => {
-        return res || fetch(e.request).then((fetchRes) => {
-          // Cache successful responses for local assets
-          if (fetchRes.status === 200 && e.request.url.startsWith(self.location.origin)) {
+      fetch(e.request)
+        .then((fetchRes) => {
+          if (fetchRes.status === 200 && url.origin === self.location.origin) {
             const clone = fetchRes.clone();
             caches.open(CACHE_NAME).then((cache) => cache.put(e.request, clone));
           }
           return fetchRes;
-        });
-      }).catch(() => caches.match('/index.html'))
+        })
+        .catch(() => caches.match(e.request).then((res) => res || caches.match('/index.html')))
     );
+    return;
   }
+
+  // Cache first with network fallback for images, CSS, fonts, audio
+  e.respondWith(
+    caches.match(e.request).then((cached) => {
+      if (cached) return cached;
+      return fetch(e.request).then((fetchRes) => {
+        if (fetchRes.status === 200 && url.origin === self.location.origin) {
+          const clone = fetchRes.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(e.request, clone));
+        }
+        return fetchRes;
+      });
+    }).catch(() => caches.match('/index.html'))
+  );
 });
