@@ -284,6 +284,46 @@ window.GAMES_CATALOG = [
     addedAt: "2026-11-14",
     thumbnail: "/assets/thumbs/tic-tac-toe-cyber.webp",
     thumbnailStatus: "present"
+  },
+  {
+    id: "solitaire",
+    title: "Klondike Solitaire",
+    category: "casual",
+    description: "The timeless single-player card challenge. Build the four suit foundations from Ace to King using alternating-color tableau stacks.",
+    instructions: "Tap or drag cards to stack descending alternating colors. Double-tap or double-click to auto-move to foundations.",
+    author: "Aashish Chakravarty",
+    license: "MIT",
+    sourceUrl: "https://github.com/AashishChakravarty/solitaire",
+    localUrl: "/games/solitaire/index.html",
+    plays: 0,
+    touchNative: true,
+    needsTouchOverlay: false,
+    orientation: "any",
+    tags: ["solitaire", "cards", "klondike", "casual", "touch"],
+    color: "#00f0ff",
+    addedAt: "2026-11-15",
+    thumbnail: "/assets/thumbs/solitaire.webp",
+    thumbnailStatus: "present"
+  },
+  {
+    id: "mahjong",
+    title: "Mahjong Solitaire",
+    category: "board",
+    description: "Match and eliminate identical pairs of open tiles across multi-layer traditional layouts until the board is completely cleared.",
+    instructions: "Click or tap two matching open tiles (unblocked on top and at least one side) to clear them.",
+    author: "ScriptRaccoon",
+    license: "MIT",
+    sourceUrl: "https://github.com/ScriptRaccoon/mahjong-solitaire",
+    localUrl: "/games/mahjong/index.html",
+    plays: 0,
+    touchNative: true,
+    needsTouchOverlay: false,
+    orientation: "any",
+    tags: ["mahjong", "board", "puzzle", "tiles", "touch"],
+    color: "#ff007f",
+    addedAt: "2026-11-15",
+    thumbnail: "/assets/thumbs/mahjong.webp",
+    thumbnailStatus: "present"
   }
 ];
 

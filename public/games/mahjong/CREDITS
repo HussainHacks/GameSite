@@ -1,0 +1,9 @@
+# Mahjong Solitaire - Credits
+
+- Author: ScriptRaccoon
+- Repository: https://github.com/ScriptRaccoon/mahjong-solitaire
+- Game Code License: MIT License (see LICENSE)
+- Description: Classic Mahjong Solitaire browser game matching pairs of open tiles across multi-tier layouts.
+- Tile Artwork: Smooth Tileset by Jaye Evins (https://github.com/jimevins/smooth-tileset), licensed under GNU General Public License v2+ (GPL-2.0+).
+- Dependencies: jQuery 3.5.1 vendored locally (zero CDN dependencies).
+- Portal Integration: Cyberpunk frame styling, mobile touch scaling, and offline self-hosted packaging for Neon Arcade.

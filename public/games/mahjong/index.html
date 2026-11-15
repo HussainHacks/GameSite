@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+        <title>Mahjong Solitaire // Tile Matrix</title>
+        <link rel="stylesheet" href="style.css" />
+    </head>
+    <body>
+            <header>MAHJONG SOLITAIRE // TILE MATRIX</header>
+
+            <div id="wrapper">
+                <main>
+                    <section id="infoText">               
+                        <p>
+                            Select two identical open tiles to remove them. Once all tiles are
+                            removed, the board is cleared!
+                        </p>
+                        <p>
+                            Only open tiles can be selected: tiles that have no tile on top of them,
+                            and have at least one side (left or right) completely free.
+                        </p>
+                        <p>
+                            Special tiles: Flowers and Seasons can be matched with any other tile in their group,
+                            even if their artwork differs.
+                        </p>
+                        <p>
+                            <img src="./img/season1.png" alt="Season" />
+                            <img src="./img/season2.png" alt="Season" />
+                            <img src="./img/season3.png" alt="Season" />
+                            <img src="./img/season4.png" alt="Season" />
+                        </p>
+                        <p>
+                            <img src="./img/flower1.png" alt="Flower" />
+                            <img src="./img/flower2.png" alt="Flower" />
+                            <img src="./img/flower3.png" alt="Flower" />
+                            <img src="./img/flower4.png" alt="Flower" />
+                        </p>
+                    </section>
+
+                    <section id="game"></section>     
+                </main>
+        
+                <footer>
+                    <span id="statusText"></span>
+                    <span id="controls">
+                        <button id="hintButton">💡 HINT</button>
+                        <button id="restartButton">↺ RESTART</button>
+                        <button id="infoButton">ℹ RULES</button>
+                    </span>
+                </footer> 
+            </div>
+        
+        <script src="jquery.min.js"></script>
+        <script src="main.js" type="module"></script>
+    </body>
+</html>
