@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
+  <meta name="theme-color" content="#00f0ff">
+  <meta name="description" content="Neon Arcade — Mobile-optimized Cyberpunk web gaming portal featuring 100+ open-source games. Play instantly in your browser!">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>NEON ARCADE // Cyberpunk Mobile Gaming Portal</title>
+
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" type="image/svg+xml" href="/assets/icons/icon-192.svg">
+  <link rel="apple-touch-icon" href="/assets/icons/icon-192.svg">
+
+  <link rel="stylesheet" href="/css/cyberpunk.css">
+  <link rel="stylesheet" href="/css/gamepad.css">
+</head>
+<body>
+
+  <!-- Cyberpunk Top Navigation Bar -->
+  <header class="cyber-header">
+    <div class="header-container">
+      <div class="brand" onclick="window.scrollTo({top: 0, behavior: 'smooth'})">
+        <div class="brand-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#00f0ff" stroke-width="2">
+            <rect x="2" y="6" width="20" height="12" rx="3" stroke="#00f0ff"/>
+            <path d="M6 12h4m-2-2v4m8-2h.01m3-2h.01" stroke="#ff007f" stroke-width="2.5" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <h1>NEON ARCADE</h1>
+          <span>CYBERPUNK // 100+ OPEN SOURCE GAMES</span>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <button class="btn-icon" id="soundToggleBtn" title="Toggle Sound FX">🔊</button>
+        <button class="btn-icon" id="headerFavBtn" title="View Favorites" onclick="document.querySelector('[data-cat=favorites]').click()">
+          ★
+          <span class="badge-count" id="favCountBadge">0</span>
+        </button>
+        <button class="btn-icon" id="pwaInstallBtn" style="display: none;" title="Install Cyberpunk App">⬇</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Sticky Horizontal Category Ribbon -->
+  <nav class="category-nav">
+    <div class="category-track">
+      <button class="cat-pill active" data-cat="all">⚡ ALL CORES (110)</button>
+      <button class="cat-pill" data-cat="arcade">👾 ARCADE & RETRO</button>
+      <button class="cat-pill" data-cat="puzzle">🧩 PUZZLE & BRAIN</button>
+      <button class="cat-pill" data-cat="action">⚔️ ACTION & PLATFORM</button>
+      <button class="cat-pill" data-cat="casual">🎯 CASUAL & TAP</button>
+      <button class="cat-pill" data-cat="board">♟️ BOARD & CARDS</button>
+      <button class="cat-pill" data-cat="racing">🏎️ RACING & SPORTS</button>
+      <button class="cat-pill" data-cat="favorites">★ FAVORITES</button>
+      <button class="cat-pill" data-cat="recent">🕒 RECENTLY PLAYED</button>
+    </div>
+  </nav>
+
+  <!-- Search Matrix Input -->
+  <section class="search-container">
+    <div class="search-box">
+      <input type="text" id="searchInput" class="search-input" placeholder="Search 100+ cyber games, tags, or genres..." autocomplete="off">
+      <button class="search-clear-btn" id="searchClearBtn">&times;</button>
+    </div>
+  </section>
+
+  <!-- Filter Chips & Sorting Row -->
+  <section class="filter-tags-row">
+    <div class="quick-filters">
+      <button class="filter-chip" data-filter="touch">👆 TOUCH OPTIMIZED</button>
+      <button class="filter-chip" data-filter="rated">⭐ TOP RATED 4.8+</button>
+      <button class="filter-chip" data-filter="local">💾 OFFLINE BUILT-IN</button>
+    </div>
+
+    <div class="sort-box">
+      <select id="sortSelect" class="sort-select">
+        <option value="popular">SORT: MOST POPULAR</option>
+        <option value="rating">SORT: HIGHEST RATED</option>
+        <option value="title">SORT: TITLE (A - Z)</option>
+      </select>
+    </div>
+  </section>
+
+  <!-- Live Status & Counter Banner -->
+  <div class="stats-banner">
+    <div>MATRIX STATUS: <span style="color: #00f0ff;">CONNECTED</span></div>
+    <div class="games-counter" id="gamesCount">110 GAMES ONLINE</div>
+  </div>
+
+  <!-- Main Game Cards Grid -->
+  <main class="main-content">
+    <div class="games-grid" id="gamesGrid">
+      <!-- Injected dynamically via app.js -->
+    </div>
+  </main>
+
+  <!-- Fullscreen Cyberpunk Game Player Modal -->
+  <div class="game-modal" id="gameModal">
+    <header class="modal-header">
+      <div class="modal-title-box">
+        <button class="modal-back-btn" id="modalBackBtn">◀ EXIT HUD</button>
+        <div class="modal-game-title" id="modalGameTitle">GAME TITLE</div>
+      </div>
+
+      <div class="modal-actions">
+        <button class="modal-action-btn" id="modalGamepadBtn" title="Toggle Virtual Controller">🎮 PAD</button>
+        <button class="modal-action-btn" id="modalFavBtn">☆ FAVORITE</button>
+        <button class="modal-action-btn" id="modalShareBtn">🔗 SHARE</button>
+        <button class="modal-action-btn" id="modalFullscreenBtn">⛶ FULLSCREEN</button>
+      </div>
+    </header>
+
+    <div class="modal-viewport">
+      <iframe id="modalIframe" class="game-iframe" allow="autoplay; fullscreen; accelerometer; gyroscope" sandbox="allow-scripts allow-same-origin allow-popups allow-forms"></iframe>
+
+      <!-- On-Screen Cyberpunk Virtual Touch Controller -->
+      <div class="virtual-gamepad hidden" id="virtualGamepad">
+        <!-- D-Pad Left -->
+        <div class="gamepad-dpad">
+          <button class="pad-btn pad-up" id="btnPadUp">▲</button>
+          <button class="pad-btn pad-left" id="btnPadLeft">◀</button>
+          <div class="pad-center"></div>
+          <button class="pad-btn pad-right" id="btnPadRight">▶</button>
+          <button class="pad-btn pad-down" id="btnPadDown">▼</button>
+        </div>
+
+        <!-- Action Buttons Right -->
+        <div class="gamepad-actions">
+          <button class="act-btn btn-y" id="btnActY">Y</button>
+          <button class="act-btn btn-x" id="btnActX">X</button>
+          <button class="act-btn btn-b" id="btnActB">B</button>
+          <button class="act-btn btn-a" id="btnActA">A</button>
+        </div>
+      </div>
+    </div>
+
+    <footer class="modal-footer">
+      <div id="modalInstructions" style="color: #00ffcc; font-weight: 700;">Swipe or use controls to play</div>
+      <div class="modal-license-info">
+        <span id="modalGameMeta" style="color: var(--text-dim); margin-right: 8px;"></span>
+        <a id="modalSourceLink" href="#" target="_blank" rel="noopener noreferrer">📂 GitHub Source Code</a>
+        <span>//</span>
+        <span id="modalLicense" style="color: var(--neon-yellow);">MIT</span>
+      </div>
+    </footer>
+  </div>
+
+  <!-- Mobile Bottom Sticky Navigation -->
+  <nav class="mobile-bottom-nav">
+    <button class="nav-item active" data-nav="home">
+      <span class="nav-icon">⚡</span>
+      <span>Games</span>
+    </button>
+    <button class="nav-item" data-nav="search">
+      <span class="nav-icon">🔍</span>
+      <span>Search</span>
+    </button>
+    <button class="nav-item" data-nav="favorites">
+      <span class="nav-icon">★</span>
+      <span>Favorites</span>
+    </button>
+  </nav>
+
+  <!-- Scripts -->
+  <script src="/js/games-data.js"></script>
+  <script src="/js/gamepad.js"></script>
+  <script src="/js/app.js"></script>
+</body>
+</html>

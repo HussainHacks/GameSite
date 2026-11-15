@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Flappy Drone: Cyber Escape</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; }
+    body {
+      background: #06070d;
+      color: #00f0ff;
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      width: 100vw;
+      overflow: hidden;
+      touch-action: none;
+    }
+    .game-wrapper {
+      position: relative;
+      width: 100%;
+      max-width: 380px;
+      height: 90vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    canvas {
+      background: #090a16;
+      border: 2px solid #00f0ff;
+      border-radius: 8px;
+      box-shadow: 0 0 25px rgba(0, 240, 255, 0.25);
+      width: 100%;
+      height: 100%;
+    }
+    .overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(6, 7, 13, 0.88);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      border-radius: 8px;
+      z-index: 10;
+    }
+    .overlay.hidden { display: none; }
+    .overlay h1 { font-size: 28px; color: #ff007f; text-shadow: 0 0 15px #ff007f; letter-spacing: 2px; }
+    .overlay p { font-size: 14px; color: #00f0ff; }
+    .overlay button {
+      background: #00f0ff;
+      color: #06070d;
+      border: none;
+      padding: 12px 28px;
+      font-size: 16px;
+      font-weight: 900;
+      border-radius: 4px;
+      cursor: pointer;
+      box-shadow: 0 0 15px #00f0ff;
+    }
+  </style>
+</head>
+<body>
+  <div class="game-wrapper">
+    <canvas id="flappyCanvas" width="360" height="580"></canvas>
+
+    <div id="overlay" class="overlay">
+      <h1 id="overlayTitle">FLAPPY DRONE</h1>
+      <p id="overlayScore">Tap anywhere to ignite thrusters</p>
+      <button id="startBtn">ENGAGE THRUST</button>
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('flappyCanvas');
+    const ctx = canvas.getContext('2d');
+    const overlay = document.getElementById('overlay');
+    const overlayTitle = document.getElementById('overlayTitle');
+    const overlayScore = document.getElementById('overlayScore');
+    const startBtn = document.getElementById('startBtn');
+
+    // Web Audio Sound Engine
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    function pulseAudio(freq, type = 'sine', duration = 0.08) {
+      try {
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+      } catch (e) {}
+    }
+
+    let isPlaying = false;
+    let score = 0;
+    let highScore = localStorage.getItem('flappy_cyber_hi') || 0;
+
+    let drone = { x: 70, y: 250, r: 12, vy: 0, gravity: 0.35, jump: -6.5 };
+    let pipes = [];
+    let particles = [];
+    let frame = 0;
+
+    const PIPE_GAP = 140;
+    const PIPE_WIDTH = 52;
+    const PIPE_SPEED = 2.4;
+
+    function flap() {
+      if (!isPlaying) return;
+      drone.vy = drone.jump;
+      pulseAudio(600, 'triangle', 0.08);
+      if (navigator.vibrate) navigator.vibrate(15);
+
+      // Spawn thruster sparks
+      for (let i = 0; i < 6; i++) {
+        particles.push({
+          x: drone.x - 8,
+          y: drone.y + Math.random() * 6 - 3,
+          vx: -(Math.random() * 3 + 2),
+          vy: Math.random() * 2 - 1,
+          life: 1.0,
+          color: '#00f0ff'
+        });
+      }
+    }
+
+    function spawnPipe() {
+      const minTop = 60;
+      const maxTop = canvas.height - PIPE_GAP - 60;
+      const topHeight = Math.floor(Math.random() * (maxTop - minTop)) + minTop;
+      pipes.push({
+        x: canvas.width,
+        top: topHeight,
+        bottom: canvas.height - topHeight - PIPE_GAP,
+        passed: false
+      });
+    }
+
+    function update() {
+      if (!isPlaying) return;
+
+      frame++;
+      drone.vy += drone.gravity;
+      drone.y += drone.vy;
+
+      // Spawn pipes
+      if (frame % 100 === 0) {
+        spawnPipe();
+      }
+
+      // Ceiling / Floor collision
+      if (drone.y + drone.r >= canvas.height || drone.y - drone.r <= 0) {
+        return gameOver();
+      }
+
+      // Pipes update
+      for (let i = pipes.length - 1; i >= 0; i--) {
+        const p = pipes[i];
+        p.x -= PIPE_SPEED;
+
+        // Score
+        if (!p.passed && p.x + PIPE_WIDTH < drone.x) {
+          p.passed = true;
+          score++;
+          pulseAudio(880, 'sine', 0.12);
+        }
+
+        // Collision with top or bottom pipe
+        if (drone.x + drone.r > p.x && drone.x - drone.r < p.x + PIPE_WIDTH) {
+          if (drone.y - drone.r < p.top || drone.y + drone.r > canvas.height - p.bottom) {
+            return gameOver();
+          }
+        }
+
+        // Remove offscreen
+        if (p.x + PIPE_WIDTH < 0) {
+          pipes.splice(i, 1);
+        }
+      }
+
+      // Particles
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const pt = particles[i];
+        pt.x += pt.vx;
+        pt.y += pt.vy;
+        pt.life -= 0.05;
+        if (pt.life <= 0) particles.splice(i, 1);
+      }
+
+      draw();
+      requestAnimationFrame(update);
+    }
+
+    function draw() {
+      ctx.fillStyle = '#090a16';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Draw faint cyber grid horizon
+      ctx.strokeStyle = 'rgba(0, 240, 255, 0.06)';
+      for (let y = 0; y < canvas.height; y += 40) {
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+      }
+
+      // Draw Pipes (Neon Gateway Columns)
+      pipes.forEach(p => {
+        ctx.shadowBlur = 12;
+        ctx.shadowColor = '#ff007f';
+        ctx.fillStyle = '#181226';
+        ctx.strokeStyle = '#ff007f';
+        ctx.lineWidth = 2;
+
+        // Top Pipe
+        ctx.fillRect(p.x, 0, PIPE_WIDTH, p.top);
+        ctx.strokeRect(p.x, 0, PIPE_WIDTH, p.top);
+
+        // Bottom Pipe
+        ctx.fillRect(p.x, canvas.height - p.bottom, PIPE_WIDTH, p.bottom);
+        ctx.strokeRect(p.x, canvas.height - p.bottom, PIPE_WIDTH, p.bottom);
+      });
+
+      // Draw Drone
+      ctx.shadowBlur = 18;
+      ctx.shadowColor = '#00f0ff';
+      ctx.fillStyle = '#00f0ff';
+      ctx.beginPath();
+      ctx.arc(drone.x, drone.y, drone.r, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Drone Core Visor
+      ctx.fillStyle = '#fcee0a';
+      ctx.fillRect(drone.x + 2, drone.y - 3, 6, 6);
+      ctx.shadowBlur = 0;
+
+      // Draw Thruster Particles
+      particles.forEach(pt => {
+        ctx.globalAlpha = pt.life;
+        ctx.fillStyle = pt.color;
+        ctx.fillRect(pt.x, pt.y, 3, 3);
+      });
+      ctx.globalAlpha = 1.0;
+
+      // Draw Score HUD
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '900 36px "Segoe UI", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(score, canvas.width / 2, 60);
+    }
+
+    function startGame() {
+      drone = { x: 70, y: 250, r: 12, vy: 0, gravity: 0.35, jump: -6.5 };
+      pipes = [];
+      particles = [];
+      score = 0;
+      frame = 0;
+      isPlaying = true;
+      overlay.classList.add('hidden');
+      update();
+    }
+
+    function gameOver() {
+      isPlaying = false;
+      pulseAudio(150, 'sawtooth', 0.3);
+      if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+
+      if (score > highScore) {
+        highScore = score;
+        localStorage.setItem('flappy_cyber_hi', highScore);
+      }
+      overlayTitle.textContent = "SIGNAL SEVERED";
+      overlayScore.textContent = `SCORE: ${score} // BEST: ${highScore}`;
+      startBtn.textContent = "RE-IGNITE";
+      overlay.classList.remove('hidden');
+    }
+
+    window.addEventListener('touchstart', (e) => {
+      if (e.target !== startBtn) {
+        e.preventDefault();
+        flap();
+      }
+    }, {passive: false});
+
+    window.addEventListener('mousedown', (e) => {
+      if (e.target !== startBtn) flap();
+    });
+
+    window.addEventListener('keydown', (e) => {
+      if (e.key === ' ' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        flap();
+      }
+    });
+
+    startBtn.addEventListener('click', startGame);
+    draw();
+  </script>
+</body>
+</html>

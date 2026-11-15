@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="192" height="192">
+  <defs>
+    <linearGradient id="bgGrad192" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#07080e"/>
+      <stop offset="50%" stop-color="#121324"/>
+      <stop offset="100%" stop-color="#05060a"/>
+    </linearGradient>
+    <linearGradient id="neonCyan192" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00f0ff"/>
+      <stop offset="100%" stop-color="#7000ff"/>
+    </linearGradient>
+    <linearGradient id="neonPink192" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ff0055"/>
+      <stop offset="100%" stop-color="#fcee0a"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="96" fill="url(#bgGrad192)"/>
+  <rect x="24" y="24" width="464" height="464" rx="72" fill="none" stroke="#00f0ff" stroke-width="6" stroke-opacity="0.5"/>
+  <path d="M 140 180 C 180 160, 332 160, 372 180 C 420 204, 444 320, 396 376 C 364 412, 330 380, 290 324 C 270 300, 242 300, 222 324 C 182 380, 148 412, 116 376 C 68 320, 92 204, 140 180 Z" 
+        fill="#141729" stroke="url(#neonCyan192)" stroke-width="12"/>
+  <path d="M 160 230 h 20 v -20 h 20 v 20 h 20 v 20 h -20 v 20 h -20 v -20 h -20 Z" fill="#00f0ff"/>
+  <circle cx="340" cy="220" r="14" fill="#ff0055"/>
+  <circle cx="370" cy="245" r="14" fill="#fcee0a"/>
+  <circle cx="310" cy="245" r="14" fill="#00ff66"/>
+  <circle cx="340" cy="270" r="14" fill="#00f0ff"/>
+  <text x="256" y="440" font-family="monospace, sans-serif" font-size="32" font-weight="900" fill="#00f0ff" text-anchor="middle" letter-spacing="4">NEON ARCADE</text>
+</svg>

@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Hextris: Hexagonal Pulse</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; }
+    body {
+      background: #06070d;
+      color: #00f0ff;
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      height: 100vh;
+      width: 100vw;
+      padding: 10px;
+      overflow: hidden;
+      touch-action: none;
+    }
+    .hud {
+      width: 100%;
+      max-width: 440px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 16px;
+      background: rgba(14, 16, 30, 0.9);
+      border: 1px solid #ff007f;
+      border-radius: 6px;
+      font-weight: 800;
+      font-size: 15px;
+    }
+    .hud-val { color: #fcee0a; text-shadow: 0 0 6px #fcee0a; }
+
+    .canvas-container {
+      flex: 1;
+      width: 100%;
+      max-width: 440px;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    canvas {
+      background: #0a0b16;
+      border: 2px solid #00f0ff;
+      border-radius: 12px;
+      box-shadow: 0 0 25px rgba(0, 240, 255, 0.2);
+      width: 100%;
+      max-height: 100%;
+      aspect-ratio: 1 / 1;
+    }
+
+    .rotate-controls {
+      width: 100%;
+      max-width: 440px;
+      display: flex;
+      gap: 12px;
+      height: 60px;
+    }
+    .r-btn {
+      flex: 1;
+      background: rgba(18, 22, 42, 0.9);
+      border: 1px solid #00f0ff;
+      color: #00f0ff;
+      font-size: 20px;
+      font-weight: 900;
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .r-btn:active { background: #00f0ff; color: #000; box-shadow: 0 0 15px #00f0ff; }
+    .btn-right { border-color: #ff007f; color: #ff007f; }
+    .btn-right:active { background: #ff007f; color: #fff; box-shadow: 0 0 15px #ff007f; }
+
+    .overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(6, 7, 13, 0.9);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      border-radius: 12px;
+      z-index: 10;
+    }
+    .overlay.hidden { display: none; }
+    .overlay h2 { font-size: 26px; color: #ff007f; text-shadow: 0 0 15px #ff007f; letter-spacing: 2px; }
+    .overlay button {
+      background: #ff007f;
+      color: #fff;
+      border: none;
+      padding: 12px 28px;
+      font-size: 16px;
+      font-weight: 900;
+      border-radius: 4px;
+      cursor: pointer;
+      box-shadow: 0 0 15px #ff007f;
+    }
+  </style>
+</head>
+<body>
+  <div class="hud">
+    <div>SCORE: <span id="score" class="hud-val">0</span></div>
+    <div>MULTIPLIER: <span id="mult" class="hud-val">1x</span></div>
+  </div>
+
+  <div class="canvas-container">
+    <canvas id="hextrisCanvas" width="400" height="400"></canvas>
+
+    <div id="overlay" class="overlay">
+      <h2 id="overlayTitle">HEXTRIS PULSE</h2>
+      <button id="startBtn">ENGAGE HEXAGON</button>
+    </div>
+  </div>
+
+  <div class="rotate-controls">
+    <button class="r-btn" id="rotLeft">↺ ROTATE LEFT</button>
+    <button class="r-btn btn-right" id="rotRight">ROTATE RIGHT ↻</button>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('hextrisCanvas');
+    const ctx = canvas.getContext('2d');
+    const scoreEl = document.getElementById('score');
+    const multEl = document.getElementById('mult');
+    const overlay = document.getElementById('overlay');
+    const startBtn = document.getElementById('startBtn');
+
+    // Web Audio Sound Engine
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    function synthBeep(freq, type = 'sine', duration = 0.08) {
+      try {
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+      } catch (e) {}
+    }
+
+    const COLORS = ['#ff007f', '#00f0ff', '#fcee0a', '#00ff66'];
+    const HEX_RADIUS = 45;
+    const BAR_HEIGHT = 14;
+
+    let isPlaying = false;
+    let score = 0;
+    let multiplier = 1;
+    let hexRotation = 0; // In steps (0..5)
+    let hexDisplayAngle = 0;
+
+    // 6 edges of the hexagon, each holds array of stacked colors
+    let stacks = [[], [], [], [], [], []];
+    let fallingBars = [];
+    let particles = [];
+    let spawnTimer = 0;
+
+    function rotateHex(dir) {
+      if (!isPlaying) return;
+      hexRotation = (hexRotation + dir + 6) % 6;
+      synthBeep(450, 'triangle', 0.05);
+      if (navigator.vibrate) navigator.vibrate(10);
+    }
+
+    function spawnBar() {
+      const edge = Math.floor(Math.random() * 6);
+      const color = COLORS[Math.floor(Math.random() * COLORS.length)];
+      fallingBars.push({
+        edge,
+        dist: 180,
+        speed: 1.8 + Math.min(2.5, score * 0.005),
+        color
+      });
+    }
+
+    function update() {
+      if (!isPlaying) return;
+
+      // Smooth rotate animation
+      const targetAngle = hexRotation * (Math.PI / 3);
+      hexDisplayAngle += (targetAngle - hexDisplayAngle) * 0.3;
+
+      spawnTimer++;
+      if (spawnTimer % 65 === 0) spawnBar();
+
+      // Update falling bars
+      for (let i = fallingBars.length - 1; i >= 0; i--) {
+        const b = fallingBars[i];
+        b.dist -= b.speed;
+
+        // Effective edge after hexagon rotation
+        const effectiveEdge = (b.edge - hexRotation + 6) % 6;
+        const stackLen = stacks[effectiveEdge].length;
+        const targetDist = HEX_RADIUS + stackLen * BAR_HEIGHT;
+
+        if (b.dist <= targetDist) {
+          // Check game over if stack overflows max (7 blocks)
+          if (stackLen >= 7) {
+            return gameOver();
+          }
+
+          stacks[effectiveEdge].push(b.color);
+          fallingBars.splice(i, 1);
+          synthBeep(320, 'square', 0.04);
+          checkMatches(effectiveEdge);
+        }
+      }
+
+      draw();
+      requestAnimationFrame(update);
+    }
+
+    function checkMatches(edge) {
+      const stack = stacks[edge];
+      if (stack.length >= 3) {
+        const topColor = stack[stack.length - 1];
+        let matchCount = 1;
+        for (let i = stack.length - 2; i >= 0; i--) {
+          if (stack[i] === topColor) matchCount++;
+          else break;
+        }
+
+        if (matchCount >= 3) {
+          stack.splice(stack.length - matchCount, matchCount);
+          score += matchCount * 10 * multiplier;
+          multiplier++;
+          scoreEl.textContent = score;
+          multEl.textContent = multiplier + 'x';
+          synthBeep(700 + matchCount * 100, 'sine', 0.18);
+          if (navigator.vibrate) navigator.vibrate([30, 20, 30]);
+        }
+      }
+    }
+
+    function draw() {
+      ctx.fillStyle = '#0a0b16';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      const cx = canvas.width / 2;
+      const cy = canvas.height / 2;
+
+      // Draw Center Hexagon
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(hexDisplayAngle);
+
+      ctx.shadowBlur = 15;
+      ctx.shadowColor = '#00f0ff';
+      ctx.strokeStyle = '#00f0ff';
+      ctx.lineWidth = 3;
+      ctx.fillStyle = '#14172c';
+
+      ctx.beginPath();
+      for (let i = 0; i < 6; i++) {
+        const a = (i * Math.PI) / 3;
+        const x = Math.cos(a) * HEX_RADIUS;
+        const y = Math.sin(a) * HEX_RADIUS;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+
+      // Draw stacked bars on each edge
+      for (let e = 0; e < 6; e++) {
+        const angle = (e * Math.PI) / 3;
+        stacks[e].forEach((color, idx) => {
+          const r = HEX_RADIUS + idx * BAR_HEIGHT + BAR_HEIGHT / 2;
+          ctx.save();
+          ctx.rotate(angle);
+          ctx.fillStyle = color;
+          ctx.shadowBlur = 8;
+          ctx.shadowColor = color;
+          ctx.fillRect(-HEX_RADIUS * 0.45, r - BAR_HEIGHT / 2, HEX_RADIUS * 0.9, BAR_HEIGHT - 2);
+          ctx.restore();
+        });
+      }
+      ctx.restore();
+
+      // Draw Falling Bars (world coordinates)
+      fallingBars.forEach(b => {
+        const a = (b.edge * Math.PI) / 3;
+        const x = cx + Math.cos(a) * b.dist;
+        const y = cy + Math.sin(a) * b.dist;
+
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(a + Math.PI / 2);
+        ctx.fillStyle = b.color;
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = b.color;
+        ctx.fillRect(-HEX_RADIUS * 0.45, -BAR_HEIGHT / 2, HEX_RADIUS * 0.9, BAR_HEIGHT - 2);
+        ctx.restore();
+      });
+    }
+
+    function startGame() {
+      score = 0;
+      multiplier = 1;
+      hexRotation = 0;
+      hexDisplayAngle = 0;
+      stacks = [[], [], [], [], [], []];
+      fallingBars = [];
+      scoreEl.textContent = 0;
+      multEl.textContent = '1x';
+      isPlaying = true;
+      overlay.classList.add('hidden');
+      update();
+    }
+
+    function gameOver() {
+      isPlaying = false;
+      synthBeep(120, 'sawtooth', 0.4);
+      document.getElementById('overlayTitle').textContent = "PULSE OVERLOAD";
+      startBtn.textContent = "RE-ENGAGE";
+      overlay.classList.remove('hidden');
+    }
+
+    document.getElementById('rotLeft').addEventListener('click', () => rotateHex(-1));
+    document.getElementById('rotRight').addEventListener('click', () => rotateHex(1));
+
+    // Tap left or right side of canvas to rotate
+    canvas.addEventListener('touchstart', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const x = e.touches[0].clientX - rect.left;
+      if (x < rect.width / 2) rotateHex(-1);
+      else rotateHex(1);
+    });
+
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') rotateHex(-1);
+      if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') rotateHex(1);
+    });
+
+    startBtn.addEventListener('click', startGame);
+    draw();
+  </script>
+</body>
+</html>

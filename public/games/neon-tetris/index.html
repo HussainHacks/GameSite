@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Neon Blocks: Cyber Tetris</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; }
+    body {
+      background: #07080f;
+      color: #00ffcc;
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      height: 100vh;
+      width: 100vw;
+      padding: 6px 12px;
+      overflow: hidden;
+      touch-action: none;
+    }
+    .header {
+      width: 100%;
+      max-width: 380px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 6px 12px;
+      background: rgba(16, 18, 32, 0.85);
+      border: 1px solid #ff007f;
+      border-radius: 6px;
+      box-shadow: 0 0 10px rgba(255, 0, 127, 0.3);
+    }
+    .title { font-size: 15px; font-weight: 900; color: #ff007f; text-shadow: 0 0 8px #ff007f; letter-spacing: 1px; }
+    .stats { display: flex; gap: 14px; font-size: 13px; font-weight: 700; color: #00f0ff; }
+    .val { color: #fcee0a; text-shadow: 0 0 6px #fcee0a; }
+
+    .game-area {
+      flex: 1;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      max-height: 65vh;
+    }
+    canvas#tetris {
+      background: #0d0e1c;
+      border: 2px solid #00f0ff;
+      border-radius: 6px;
+      box-shadow: 0 0 20px rgba(0, 240, 255, 0.25);
+      height: 100%;
+      aspect-ratio: 10 / 20;
+    }
+    .side-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .next-box {
+      background: #0d0e1c;
+      border: 1px solid #00ffcc;
+      border-radius: 6px;
+      padding: 6px;
+      text-align: center;
+      box-shadow: 0 0 10px rgba(0, 255, 204, 0.2);
+    }
+    .next-box p { font-size: 10px; font-weight: 800; color: #00ffcc; margin-bottom: 4px; }
+    canvas#next {
+      background: #090a14;
+      border-radius: 4px;
+      width: 70px;
+      height: 70px;
+    }
+
+    /* Mobile Controls Bar */
+    .controls {
+      width: 100%;
+      max-width: 380px;
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 6px;
+      padding: 6px 0;
+    }
+    .c-btn {
+      background: rgba(22, 26, 48, 0.9);
+      border: 1px solid #00f0ff;
+      color: #00f0ff;
+      font-size: 18px;
+      font-weight: 900;
+      border-radius: 6px;
+      height: 52px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 0 8px rgba(0, 240, 255, 0.2);
+    }
+    .c-btn:active { background: #00f0ff; color: #090a12; box-shadow: 0 0 15px #00f0ff; }
+    .btn-rotate { border-color: #ff007f; color: #ff007f; }
+    .btn-rotate:active { background: #ff007f; color: #fff; box-shadow: 0 0 15px #ff007f; }
+    .btn-hard { border-color: #fcee0a; color: #fcee0a; font-size: 14px; }
+    .btn-hard:active { background: #fcee0a; color: #000; box-shadow: 0 0 15px #fcee0a; }
+
+    .overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(7, 8, 15, 0.9);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      z-index: 20;
+      border-radius: 6px;
+    }
+    .overlay.hidden { display: none; }
+    .overlay h2 { font-size: 24px; color: #ff007f; text-shadow: 0 0 15px #ff007f; letter-spacing: 2px; }
+    .overlay button {
+      background: #ff007f;
+      color: #fff;
+      border: none;
+      padding: 10px 24px;
+      font-size: 14px;
+      font-weight: 800;
+      letter-spacing: 1px;
+      border-radius: 4px;
+      cursor: pointer;
+      box-shadow: 0 0 15px #ff007f;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="title">NEON BLOCKS</div>
+    <div class="stats">
+      <div>SCORE: <span id="score" class="val">0</span></div>
+      <div>LINES: <span id="lines" class="val">0</span></div>
+    </div>
+  </div>
+
+  <div class="game-area">
+    <canvas id="tetris" width="200" height="400"></canvas>
+    <div class="side-panel">
+      <div class="next-box">
+        <p>NEXT</p>
+        <canvas id="next" width="80" height="80"></canvas>
+      </div>
+    </div>
+
+    <div id="overlay" class="overlay">
+      <h2 id="overlayTitle">CYBER TETRIS</h2>
+      <button id="startBtn">ENGAGE SYSTEM</button>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button class="c-btn" id="btnLeft">◀</button>
+    <button class="c-btn btn-rotate" id="btnRotate">↻</button>
+    <button class="c-btn" id="btnDown">▼</button>
+    <button class="c-btn" id="btnRight">▶</button>
+    <button class="c-btn btn-hard" id="btnHard">⚡</button>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('tetris');
+    const ctx = canvas.getContext('2d');
+    const nextCanvas = document.getElementById('next');
+    const nextCtx = nextCanvas.getContext('2d');
+    const scoreEl = document.getElementById('score');
+    const linesEl = document.getElementById('lines');
+    const overlay = document.getElementById('overlay');
+    const startBtn = document.getElementById('startBtn');
+
+    const COLS = 10;
+    const ROWS = 20;
+    const BLOCK_SIZE = 20;
+
+    const SHAPES = {
+      I: { matrix: [[1, 1, 1, 1]], color: '#00f0ff' },
+      J: { matrix: [[1, 0, 0], [1, 1, 1]], color: '#0066ff' },
+      L: { matrix: [[0, 0, 1], [1, 1, 1]], color: '#ff9900' },
+      O: { matrix: [[1, 1], [1, 1]], color: '#fcee0a' },
+      S: { matrix: [[0, 1, 1], [1, 1, 0]], color: '#00ff66' },
+      T: { matrix: [[0, 1, 0], [1, 1, 1]], color: '#cc33ff' },
+      Z: { matrix: [[1, 1, 0], [0, 1, 1]], color: '#ff0055' }
+    };
+    const PIECE_KEYS = Object.keys(SHAPES);
+
+    let arena = createMatrix(COLS, ROWS);
+    let player = { pos: {x: 0, y: 0}, matrix: null, color: '#fff' };
+    let nextPiece = null;
+    let score = 0;
+    let lines = 0;
+    let dropInterval = 800;
+    let lastTime = 0;
+    let dropCounter = 0;
+    let isPlaying = false;
+
+    // Web Audio Sound Engine
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    function beep(freq, type = 'sine', duration = 0.08) {
+      try {
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+      } catch (e) {}
+    }
+
+    function createMatrix(w, h) {
+      const matrix = [];
+      while (h--) matrix.push(new Array(w).fill(0));
+      return matrix;
+    }
+
+    function getRandomPiece() {
+      const key = PIECE_KEYS[Math.floor(Math.random() * PIECE_KEYS.length)];
+      return {
+        matrix: SHAPES[key].matrix.map(row => [...row]),
+        color: SHAPES[key].color
+      };
+    }
+
+    function playerReset() {
+      if (!nextPiece) nextPiece = getRandomPiece();
+      player.matrix = nextPiece.matrix;
+      player.color = nextPiece.color;
+      player.pos.y = 0;
+      player.pos.x = Math.floor(COLS / 2) - Math.floor(player.matrix[0].length / 2);
+      nextPiece = getRandomPiece();
+      drawNext();
+
+      if (collide(arena, player)) {
+        gameOver();
+      }
+    }
+
+    function collide(arena, player) {
+      const [m, o] = [player.matrix, player.pos];
+      for (let y = 0; y < m.length; ++y) {
+        for (let x = 0; x < m[y].length; ++x) {
+          if (m[y][x] !== 0 &&
+              (arena[y + o.y] && arena[y + o.y][x + o.x]) !== 0) {
+            return true;
+          }
+        }
+      }
+      return false;
+    }
+
+    function merge(arena, player) {
+      player.matrix.forEach((row, y) => {
+        row.forEach((value, x) => {
+          if (value !== 0) {
+            arena[y + player.pos.y][x + player.pos.x] = player.color;
+          }
+        });
+      });
+    }
+
+    function rotate(matrix, dir) {
+      for (let y = 0; y < matrix.length; ++y) {
+        for (let x = 0; x < y; ++x) {
+          [matrix[x][y], matrix[y][x]] = [matrix[y][x], matrix[x][y]];
+        }
+      }
+      if (dir > 0) matrix.forEach(row => row.reverse());
+      else matrix.reverse();
+    }
+
+    function playerRotate(dir) {
+      const pos = player.pos.x;
+      let offset = 1;
+      rotate(player.matrix, dir);
+      while (collide(arena, player)) {
+        player.pos.x += offset;
+        offset = -(offset + (offset > 0 ? 1 : -1));
+        if (offset > player.matrix[0].length) {
+          rotate(player.matrix, -dir);
+          player.pos.x = pos;
+          return;
+        }
+      }
+      beep(550, 'triangle', 0.05);
+      if (navigator.vibrate) navigator.vibrate(10);
+    }
+
+    function playerMove(dir) {
+      player.pos.x += dir;
+      if (collide(arena, player)) {
+        player.pos.x -= dir;
+      } else {
+        beep(300, 'sine', 0.03);
+        if (navigator.vibrate) navigator.vibrate(8);
+      }
+    }
+
+    function playerDrop() {
+      player.pos.y++;
+      if (collide(arena, player)) {
+        player.pos.y--;
+        merge(arena, player);
+        arenaSweep();
+        playerReset();
+        beep(200, 'square', 0.06);
+      }
+      dropCounter = 0;
+    }
+
+    function playerHardDrop() {
+      while (!collide(arena, player)) {
+        player.pos.y++;
+      }
+      player.pos.y--;
+      merge(arena, player);
+      arenaSweep();
+      playerReset();
+      beep(150, 'sawtooth', 0.12);
+      if (navigator.vibrate) navigator.vibrate(30);
+    }
+
+    function arenaSweep() {
+      let rowCount = 0;
+      outer: for (let y = arena.length - 1; y >= 0; --y) {
+        for (let x = 0; x < arena[y].length; ++x) {
+          if (arena[y][x] === 0) continue outer;
+        }
+        const row = arena.splice(y, 1)[0].fill(0);
+        arena.unshift(row);
+        ++y;
+        rowCount++;
+      }
+      if (rowCount > 0) {
+        lines += rowCount;
+        score += [0, 100, 300, 500, 800][rowCount];
+        scoreEl.textContent = score;
+        linesEl.textContent = lines;
+        dropInterval = Math.max(150, 800 - Math.floor(lines / 5) * 60);
+        beep(800 + rowCount * 100, 'triangle', 0.2);
+        if (navigator.vibrate) navigator.vibrate([40, 20, 40]);
+      }
+    }
+
+    function getGhostPosition() {
+      const ghost = { pos: {...player.pos}, matrix: player.matrix };
+      while (!collide(arena, ghost)) {
+        ghost.pos.y++;
+      }
+      ghost.pos.y--;
+      return ghost.pos;
+    }
+
+    function draw() {
+      ctx.fillStyle = '#0a0b16';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Arena grid lines
+      ctx.strokeStyle = 'rgba(0, 240, 255, 0.05)';
+      ctx.lineWidth = 1;
+      for (let x = 0; x < canvas.width; x += BLOCK_SIZE) {
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+      }
+      for (let y = 0; y < canvas.height; y += BLOCK_SIZE) {
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+      }
+
+      // Draw Arena Blocks
+      drawMatrix(arena, {x: 0, y: 0});
+
+      if (isPlaying) {
+        // Draw Ghost Piece
+        const ghostPos = getGhostPosition();
+        player.matrix.forEach((row, y) => {
+          row.forEach((value, x) => {
+            if (value !== 0) {
+              ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+              ctx.lineWidth = 1;
+              ctx.strokeRect((x + ghostPos.x) * BLOCK_SIZE + 1, (y + ghostPos.y) * BLOCK_SIZE + 1, BLOCK_SIZE - 2, BLOCK_SIZE - 2);
+            }
+          });
+        });
+
+        // Draw Player Piece
+        drawMatrix(player.matrix, player.pos, player.color);
+      }
+    }
+
+    function drawMatrix(matrix, offset, forcedColor) {
+      matrix.forEach((row, y) => {
+        row.forEach((value, x) => {
+          if (value !== 0) {
+            const color = forcedColor || value;
+            ctx.shadowBlur = 8;
+            ctx.shadowColor = color;
+            ctx.fillStyle = color;
+            ctx.fillRect((x + offset.x) * BLOCK_SIZE + 1, (y + offset.y) * BLOCK_SIZE + 1, BLOCK_SIZE - 2, BLOCK_SIZE - 2);
+            ctx.shadowBlur = 0;
+          }
+        });
+      });
+    }
+
+    function drawNext() {
+      nextCtx.fillStyle = '#090a14';
+      nextCtx.fillRect(0, 0, nextCanvas.width, nextCanvas.height);
+      if (!nextPiece) return;
+
+      const m = nextPiece.matrix;
+      const bSize = 16;
+      const offsetX = (nextCanvas.width - m[0].length * bSize) / 2;
+      const offsetY = (nextCanvas.height - m.length * bSize) / 2;
+
+      m.forEach((row, y) => {
+        row.forEach((value, x) => {
+          if (value !== 0) {
+            nextCtx.shadowBlur = 6;
+            nextCtx.shadowColor = nextPiece.color;
+            nextCtx.fillStyle = nextPiece.color;
+            nextCtx.fillRect(offsetX + x * bSize + 1, offsetY + y * bSize + 1, bSize - 2, bSize - 2);
+            nextCtx.shadowBlur = 0;
+          }
+        });
+      });
+    }
+
+    function update(time = 0) {
+      if (!isPlaying) return;
+      const deltaTime = time - lastTime;
+      lastTime = time;
+
+      dropCounter += deltaTime;
+      if (dropCounter > dropInterval) {
+        playerDrop();
+      }
+
+      draw();
+      requestAnimationFrame(update);
+    }
+
+    function startGame() {
+      arena = createMatrix(COLS, ROWS);
+      score = 0;
+      lines = 0;
+      scoreEl.textContent = 0;
+      linesEl.textContent = 0;
+      dropInterval = 800;
+      nextPiece = null;
+      isPlaying = true;
+      overlay.classList.add('hidden');
+      playerReset();
+      lastTime = performance.now();
+      update();
+    }
+
+    function gameOver() {
+      isPlaying = false;
+      beep(100, 'sawtooth', 0.5);
+      document.getElementById('overlayTitle').textContent = "MATRIX CRITICAL";
+      startBtn.textContent = "REBOOT MATRIX";
+      overlay.classList.remove('hidden');
+    }
+
+    // Keyboard bindings
+    window.addEventListener('keydown', e => {
+      if (!isPlaying) return;
+      if (e.key === 'ArrowLeft') playerMove(-1);
+      else if (e.key === 'ArrowRight') playerMove(1);
+      else if (e.key === 'ArrowDown') playerDrop();
+      else if (e.key === 'ArrowUp') playerRotate(1);
+      else if (e.key === ' ') { e.preventDefault(); playerHardDrop(); }
+    });
+
+    // Touch controls
+    document.getElementById('btnLeft').addEventListener('click', () => playerMove(-1));
+    document.getElementById('btnRight').addEventListener('click', () => playerMove(1));
+    document.getElementById('btnDown').addEventListener('click', () => playerDrop());
+    document.getElementById('btnRotate').addEventListener('click', () => playerRotate(1));
+    document.getElementById('btnHard').addEventListener('click', () => playerHardDrop());
+
+    startBtn.addEventListener('click', startGame);
+    draw();
+  </script>
+</body>
+</html>

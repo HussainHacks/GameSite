@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>2048: Cyber Matrix Edition</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; }
+    body {
+      background: #090a12;
+      color: #00f0ff;
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      width: 100vw;
+      padding: 12px;
+      overflow: hidden;
+      touch-action: none;
+    }
+    .wrapper {
+      width: 100%;
+      max-width: 420px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(18, 20, 36, 0.85);
+      padding: 12px 16px;
+      border: 1px solid #00f0ff;
+      border-radius: 8px;
+      box-shadow: 0 0 15px rgba(0, 240, 255, 0.2);
+    }
+    .title-box h1 { font-size: 28px; font-weight: 900; color: #fcee0a; text-shadow: 0 0 10px #fcee0a; letter-spacing: 2px; }
+    .title-box p { font-size: 11px; color: #00f0ff; letter-spacing: 1px; }
+    .scores { display: flex; gap: 8px; }
+    .score-card {
+      background: #111424;
+      border: 1px solid #ff007f;
+      padding: 6px 12px;
+      border-radius: 6px;
+      text-align: center;
+      min-width: 70px;
+    }
+    .score-card .label { font-size: 10px; color: #8a99ad; font-weight: 700; }
+    .score-card .val { font-size: 16px; font-weight: 800; color: #fff; text-shadow: 0 0 8px #ff007f; }
+
+    .grid-container {
+      position: relative;
+      background: #121528;
+      border: 2px solid #00f0ff;
+      border-radius: 12px;
+      padding: 12px;
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      grid-template-rows: repeat(4, 1fr);
+      gap: 10px;
+      box-shadow: 0 0 25px rgba(0, 240, 255, 0.2), inset 0 0 15px rgba(0, 0, 0, 0.7);
+    }
+    .cell {
+      background: rgba(24, 29, 54, 0.6);
+      border-radius: 8px;
+      border: 1px solid rgba(0, 240, 255, 0.15);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 26px;
+      font-weight: 900;
+      transition: transform 0.12s ease-in-out, background 0.12s, box-shadow 0.12s;
+    }
+    
+    /* Neon Cyber Tile Styling */
+    .tile-2    { background: #162438; color: #00f0ff; border-color: #00f0ff; box-shadow: 0 0 10px rgba(0, 240, 255, 0.3); }
+    .tile-4    { background: #182e44; color: #00ffcc; border-color: #00ffcc; box-shadow: 0 0 12px rgba(0, 255, 204, 0.4); }
+    .tile-8    { background: #2f2547; color: #ff00cc; border-color: #ff00cc; box-shadow: 0 0 14px rgba(255, 0, 204, 0.5); }
+    .tile-16   { background: #3b1d3d; color: #ff007f; border-color: #ff007f; box-shadow: 0 0 16px rgba(255, 0, 127, 0.6); }
+    .tile-32   { background: #471d2c; color: #ff3344; border-color: #ff3344; box-shadow: 0 0 18px rgba(255, 51, 68, 0.7); }
+    .tile-64   { background: #4a2f1c; color: #ff9900; border-color: #ff9900; box-shadow: 0 0 20px rgba(255, 153, 0, 0.8); }
+    .tile-128  { background: #4a451c; color: #fcee0a; border-color: #fcee0a; box-shadow: 0 0 22px #fcee0a; font-size: 22px; }
+    .tile-256  { background: #224a1c; color: #00ff66; border-color: #00ff66; box-shadow: 0 0 24px #00ff66; font-size: 22px; }
+    .tile-512  { background: #1c4a45; color: #00ffee; border-color: #00ffee; box-shadow: 0 0 26px #00ffee; font-size: 22px; }
+    .tile-1024 { background: #351c4a; color: #cc66ff; border-color: #cc66ff; box-shadow: 0 0 28px #cc66ff; font-size: 18px; }
+    .tile-2048 { background: #4a1c35; color: #ffffff; border-color: #ff007f; box-shadow: 0 0 35px #ff007f, 0 0 50px #00f0ff; font-size: 18px; animation: pulse 1s infinite alternate; }
+
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      100% { transform: scale(1.05); }
+    }
+
+    .overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(9, 10, 18, 0.92);
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      z-index: 20;
+    }
+    .overlay.hidden { display: none; }
+    .overlay h2 { font-size: 28px; color: #ff007f; text-shadow: 0 0 15px #ff007f; }
+
+    .btn-row {
+      display: flex;
+      gap: 10px;
+    }
+    .btn {
+      background: #00f0ff;
+      color: #090a12;
+      border: none;
+      padding: 10px 20px;
+      font-size: 14px;
+      font-weight: 800;
+      letter-spacing: 1px;
+      border-radius: 6px;
+      cursor: pointer;
+      box-shadow: 0 0 15px rgba(0, 240, 255, 0.5);
+      flex: 1;
+    }
+    .btn:active { transform: scale(0.97); }
+    .btn-restart { background: #ff007f; color: #fff; box-shadow: 0 0 15px rgba(255, 0, 127, 0.5); }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="header">
+      <div class="title-box">
+        <h1>2048</h1>
+        <p>CYBER MATRIX</p>
+      </div>
+      <div class="scores">
+        <div class="score-card">
+          <div class="label">SCORE</div>
+          <div id="score" class="val">0</div>
+        </div>
+        <div class="score-card">
+          <div class="label">BEST</div>
+          <div id="highScore" class="val">0</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid-container" id="grid">
+      <div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div>
+      <div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div>
+      <div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div>
+      <div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div>
+
+      <div id="overlay" class="overlay hidden">
+        <h2 id="overlayTitle">MATRIX OVERLOAD</h2>
+        <button id="overlayBtn" class="btn btn-restart">REBOOT SYSTEM</button>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button id="restartBtn" class="btn btn-restart">RESET GRID</button>
+    </div>
+  </div>
+
+  <script>
+    let board = [
+      [0, 0, 0, 0],
+      [0, 0, 0, 0],
+      [0, 0, 0, 0],
+      [0, 0, 0, 0]
+    ];
+    let score = 0;
+    let highScore = localStorage.getItem('cyber_2048_hi') || 0;
+    document.getElementById('highScore').textContent = highScore;
+
+    const gridEl = document.getElementById('grid');
+    const cells = gridEl.querySelectorAll('.cell');
+    const scoreEl = document.getElementById('score');
+    const overlay = document.getElementById('overlay');
+    const overlayTitle = document.getElementById('overlayTitle');
+
+    // Synthesized Web Audio
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    function playTone(freq) {
+      try {
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.12);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.12);
+      } catch (e) {}
+    }
+
+    function initGame() {
+      board = [
+        [0, 0, 0, 0],
+        [0, 0, 0, 0],
+        [0, 0, 0, 0],
+        [0, 0, 0, 0]
+      ];
+      score = 0;
+      scoreEl.textContent = 0;
+      overlay.classList.add('hidden');
+      spawnTile();
+      spawnTile();
+      render();
+    }
+
+    function spawnTile() {
+      const empties = [];
+      for (let r = 0; r < 4; r++) {
+        for (let c = 0; c < 4; c++) {
+          if (board[r][c] === 0) empties.push({r, c});
+        }
+      }
+      if (empties.length > 0) {
+        const spot = empties[Math.floor(Math.random() * empties.length)];
+        board[spot.r][spot.c] = Math.random() < 0.9 ? 2 : 4;
+      }
+    }
+
+    function render() {
+      for (let r = 0; r < 4; r++) {
+        for (let c = 0; c < 4; c++) {
+          const val = board[r][c];
+          const index = r * 4 + c;
+          const cell = cells[index];
+          cell.className = 'cell';
+          cell.textContent = val > 0 ? val : '';
+          if (val > 0) cell.classList.add(`tile-${val}`);
+        }
+      }
+      scoreEl.textContent = score;
+      if (score > highScore) {
+        highScore = score;
+        localStorage.setItem('cyber_2048_hi', highScore);
+        document.getElementById('highScore').textContent = highScore;
+      }
+    }
+
+    function slide(row) {
+      let arr = row.filter(val => val);
+      let didMerge = false;
+      for (let i = 0; i < arr.length - 1; i++) {
+        if (arr[i] === arr[i + 1]) {
+          arr[i] *= 2;
+          score += arr[i];
+          arr.splice(i + 1, 1);
+          didMerge = true;
+        }
+      }
+      while (arr.length < 4) arr.push(0);
+      return { row: arr, didMerge };
+    }
+
+    function moveLeft() {
+      let moved = false;
+      let anyMerged = false;
+      for (let r = 0; r < 4; r++) {
+        const prev = [...board[r]];
+        const res = slide(board[r]);
+        board[r] = res.row;
+        if (res.didMerge) anyMerged = true;
+        if (board[r].some((v, idx) => v !== prev[idx])) moved = true;
+      }
+      afterMove(moved, anyMerged);
+    }
+
+    function moveRight() {
+      let moved = false;
+      let anyMerged = false;
+      for (let r = 0; r < 4; r++) {
+        const prev = [...board[r]];
+        const reversed = [...board[r]].reverse();
+        const res = slide(reversed);
+        board[r] = res.row.reverse();
+        if (res.didMerge) anyMerged = true;
+        if (board[r].some((v, idx) => v !== prev[idx])) moved = true;
+      }
+      afterMove(moved, anyMerged);
+    }
+
+    function moveUp() {
+      let moved = false;
+      let anyMerged = false;
+      for (let c = 0; c < 4; c++) {
+        const col = [board[0][c], board[1][c], board[2][c], board[3][c]];
+        const res = slide(col);
+        if (res.didMerge) anyMerged = true;
+        for (let r = 0; r < 4; r++) {
+          if (board[r][c] !== res.row[r]) moved = true;
+          board[r][c] = res.row[r];
+        }
+      }
+      afterMove(moved, anyMerged);
+    }
+
+    function moveDown() {
+      let moved = false;
+      let anyMerged = false;
+      for (let c = 0; c < 4; c++) {
+        const col = [board[0][c], board[1][c], board[2][c], board[3][c]].reverse();
+        const res = slide(col);
+        if (res.didMerge) anyMerged = true;
+        const finalCol = res.row.reverse();
+        for (let r = 0; r < 4; r++) {
+          if (board[r][c] !== finalCol[r]) moved = true;
+          board[r][c] = finalCol[r];
+        }
+      }
+      afterMove(moved, anyMerged);
+    }
+
+    function afterMove(moved, anyMerged) {
+      if (moved) {
+        if (anyMerged) {
+          playTone(660);
+          if (navigator.vibrate) navigator.vibrate(25);
+        } else {
+          playTone(400);
+          if (navigator.vibrate) navigator.vibrate(10);
+        }
+        spawnTile();
+        render();
+        checkGameOver();
+      }
+    }
+
+    function checkGameOver() {
+      // Check for 2048 victory
+      for (let r = 0; r < 4; r++) {
+        for (let c = 0; c < 4; c++) {
+          if (board[r][c] === 2048 && !overlay.classList.contains('won')) {
+            overlayTitle.textContent = "2048 REACHED!";
+            overlay.classList.add('won');
+            overlay.classList.remove('hidden');
+            return;
+          }
+        }
+      }
+
+      // Check for available moves
+      for (let r = 0; r < 4; r++) {
+        for (let c = 0; c < 4; c++) {
+          if (board[r][c] === 0) return;
+          if (c < 3 && board[r][c] === board[r][c + 1]) return;
+          if (r < 3 && board[r][c] === board[r + 1][c]) return;
+        }
+      }
+
+      // Game over
+      overlayTitle.textContent = "GRID SATURATED";
+      overlay.classList.remove('hidden');
+      if (navigator.vibrate) navigator.vibrate([80, 50, 80]);
+    }
+
+    // Touch swipe gestures
+    let touchX = 0;
+    let touchY = 0;
+    window.addEventListener('touchstart', e => {
+      touchX = e.changedTouches[0].screenX;
+      touchY = e.changedTouches[0].screenY;
+    }, {passive: true});
+
+    window.addEventListener('touchend', e => {
+      const dx = e.changedTouches[0].screenX - touchX;
+      const dy = e.changedTouches[0].screenY - touchY;
+      if (Math.abs(dx) > Math.abs(dy)) {
+        if (dx > 30) moveRight();
+        else if (dx < -30) moveLeft();
+      } else {
+        if (dy > 30) moveDown();
+        else if (dy < -30) moveUp();
+      }
+    }, {passive: true});
+
+    // Keyboard support
+    window.addEventListener('keydown', e => {
+      if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') moveLeft();
+      else if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') moveRight();
+      else if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') moveUp();
+      else if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') moveDown();
+    });
+
+    document.getElementById('restartBtn').addEventListener('click', initGame);
+    document.getElementById('overlayBtn').addEventListener('click', initGame);
+
+    initGame();
+  </script>
+</body>
+</html>

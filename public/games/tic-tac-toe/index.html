@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Tic-Tac-Toe: Quantum XO</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; }
+    body {
+      background: #080912;
+      color: #00f0ff;
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      width: 100vw;
+      padding: 16px;
+      overflow: hidden;
+      touch-action: none;
+    }
+    .wrapper {
+      width: 100%;
+      max-width: 360px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .header {
+      text-align: center;
+      background: rgba(14, 16, 28, 0.9);
+      border: 1px solid #00f0ff;
+      border-radius: 8px;
+      padding: 12px;
+      box-shadow: 0 0 15px rgba(0, 240, 255, 0.2);
+    }
+    .header h1 { font-size: 22px; color: #fcee0a; text-shadow: 0 0 10px #fcee0a; letter-spacing: 2px; }
+    .status { font-size: 15px; font-weight: 800; color: #00ffcc; margin-top: 6px; }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      background: #111426;
+      border: 2px solid #ff007f;
+      border-radius: 12px;
+      padding: 10px;
+      box-shadow: 0 0 25px rgba(255, 0, 127, 0.25);
+      aspect-ratio: 1 / 1;
+    }
+    .cell {
+      background: #191d36;
+      border-radius: 8px;
+      border: 1px solid rgba(0, 240, 255, 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 48px;
+      font-weight: 900;
+      cursor: pointer;
+      transition: background 0.1s, transform 0.1s;
+    }
+    .cell:active { transform: scale(0.95); }
+    .cell.x { color: #00f0ff; text-shadow: 0 0 20px #00f0ff; }
+    .cell.o { color: #ff007f; text-shadow: 0 0 20px #ff007f; }
+    .cell.win { background: #2f2a18; border-color: #fcee0a; animation: pulse 0.8s infinite alternate; }
+
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      100% { transform: scale(1.05); }
+    }
+
+    .options {
+      display: flex;
+      gap: 10px;
+    }
+    .btn {
+      flex: 1;
+      background: rgba(22, 26, 48, 0.9);
+      border: 1px solid #00f0ff;
+      color: #00f0ff;
+      padding: 10px;
+      font-size: 13px;
+      font-weight: 800;
+      border-radius: 6px;
+      cursor: pointer;
+      text-align: center;
+    }
+    .btn.active {
+      background: #00f0ff;
+      color: #080912;
+      box-shadow: 0 0 12px #00f0ff;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="header">
+      <h1>QUANTUM XO</h1>
+      <div id="status" class="status">YOUR TURN (X)</div>
+    </div>
+
+    <div class="grid" id="grid">
+      <div class="cell" data-i="0"></div><div class="cell" data-i="1"></div><div class="cell" data-i="2"></div>
+      <div class="cell" data-i="3"></div><div class="cell" data-i="4"></div><div class="cell" data-i="5"></div>
+      <div class="cell" data-i="6"></div><div class="cell" data-i="7"></div><div class="cell" data-i="8"></div>
+    </div>
+
+    <div class="options">
+      <button id="aiMode" class="btn active">VS AI (CYBER)</button>
+      <button id="pvpMode" class="btn">PASS & PLAY</button>
+      <button id="resetBtn" class="btn" style="border-color: #fcee0a; color: #fcee0a;">RESET</button>
+    </div>
+  </div>
+
+  <script>
+    let board = ['', '', '', '', '', '', '', '', ''];
+    let currentPlayer = 'X';
+    let isGameOver = false;
+    let vsAI = true;
+
+    const statusEl = document.getElementById('status');
+    const cells = document.querySelectorAll('.cell');
+    const aiBtn = document.getElementById('aiMode');
+    const pvpBtn = document.getElementById('pvpMode');
+    const resetBtn = document.getElementById('resetBtn');
+
+    // Web Audio Sound Engine
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    function tone(freq, type = 'sine', duration = 0.08) {
+      try {
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+      } catch (e) {}
+    }
+
+    const WINNING_COMBOS = [
+      [0,1,2], [3,4,5], [6,7,8],
+      [0,3,6], [1,4,7], [2,5,8],
+      [0,4,8], [2,4,6]
+    ];
+
+    function handleCellClick(e) {
+      const idx = parseInt(e.target.dataset.i, 10);
+      if (board[idx] !== '' || isGameOver) return;
+
+      makeMove(idx, currentPlayer);
+
+      if (!isGameOver && vsAI && currentPlayer === 'O') {
+        setTimeout(makeAIMove, 250);
+      }
+    }
+
+    function makeMove(idx, player) {
+      board[idx] = player;
+      const cell = cells[idx];
+      cell.textContent = player;
+      cell.classList.add(player.toLowerCase());
+      tone(player === 'X' ? 600 : 400, 'triangle', 0.06);
+      if (navigator.vibrate) navigator.vibrate(15);
+
+      const winCombo = checkWin(board, player);
+      if (winCombo) {
+        winCombo.forEach(i => cells[i].classList.add('win'));
+        statusEl.textContent = `${player} VICTORIOUS!`;
+        isGameOver = true;
+        tone(880, 'sine', 0.3);
+        if (navigator.vibrate) navigator.vibrate([60, 40, 60]);
+        return;
+      }
+
+      if (board.every(c => c !== '')) {
+        statusEl.textContent = 'STALEMATE (DRAW)';
+        isGameOver = true;
+        tone(200, 'sawtooth', 0.2);
+        return;
+      }
+
+      currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
+      statusEl.textContent = `${currentPlayer}'S TURN`;
+    }
+
+    function checkWin(b, p) {
+      for (const combo of WINNING_COMBOS) {
+        if (b[combo[0]] === p && b[combo[1]] === p && b[combo[2]] === p) {
+          return combo;
+        }
+      }
+      return null;
+    }
+
+    // Minimax AI
+    function makeAIMove() {
+      if (isGameOver) return;
+      const best = minimax(board, 'O');
+      makeMove(best.index, 'O');
+    }
+
+    function minimax(newBoard, player) {
+      const availSpots = newBoard.map((val, idx) => val === '' ? idx : null).filter(val => val !== null);
+
+      if (checkWin(newBoard, 'X')) return { score: -10 };
+      if (checkWin(newBoard, 'O')) return { score: 10 };
+      if (availSpots.length === 0) return { score: 0 };
+
+      const moves = [];
+      for (let i = 0; i < availSpots.length; i++) {
+        const move = {};
+        move.index = availSpots[i];
+        newBoard[availSpots[i]] = player;
+
+        if (player === 'O') {
+          const result = minimax(newBoard, 'X');
+          move.score = result.score;
+        } else {
+          const result = minimax(newBoard, 'O');
+          move.score = result.score;
+        }
+
+        newBoard[availSpots[i]] = '';
+        moves.push(move);
+      }
+
+      let bestMove;
+      if (player === 'O') {
+        let bestScore = -10000;
+        for (let i = 0; i < moves.length; i++) {
+          if (moves[i].score > bestScore) {
+            bestScore = moves[i].score;
+            bestMove = i;
+          }
+        }
+      } else {
+        let bestScore = 10000;
+        for (let i = 0; i < moves.length; i++) {
+          if (moves[i].score < bestScore) {
+            bestScore = moves[i].score;
+            bestMove = i;
+          }
+        }
+      }
+
+      return moves[bestMove];
+    }
+
+    function resetGame() {
+      board = ['', '', '', '', '', '', '', '', ''];
+      currentPlayer = 'X';
+      isGameOver = false;
+      statusEl.textContent = 'YOUR TURN (X)';
+      cells.forEach(c => {
+        c.textContent = '';
+        c.className = 'cell';
+      });
+      tone(500, 'sine', 0.05);
+    }
+
+    cells.forEach(c => c.addEventListener('click', handleCellClick));
+    resetBtn.addEventListener('click', resetGame);
+
+    aiBtn.addEventListener('click', () => {
+      vsAI = true;
+      aiBtn.classList.add('active');
+      pvpBtn.classList.remove('active');
+      resetGame();
+    });
+
+    pvpBtn.addEventListener('click', () => {
+      vsAI = false;
+      pvpBtn.classList.add('active');
+      aiBtn.classList.remove('active');
+      resetGame();
+    });
+  </script>
+</body>
+</html>

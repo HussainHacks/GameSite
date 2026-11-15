@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Memory Matrix: Neural Match</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; }
+    body {
+      background: #080912;
+      color: #00ffcc;
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      width: 100vw;
+      padding: 12px;
+      overflow: hidden;
+      touch-action: none;
+    }
+    .wrapper {
+      width: 100%;
+      max-width: 380px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .hud {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(14, 16, 28, 0.9);
+      border: 1px solid #00ffcc;
+      border-radius: 8px;
+      padding: 8px 16px;
+      box-shadow: 0 0 12px rgba(0, 255, 204, 0.2);
+      font-size: 14px;
+      font-weight: 800;
+    }
+    .hud span { color: #fcee0a; text-shadow: 0 0 6px #fcee0a; }
+
+    .matrix-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      grid-template-rows: repeat(4, 1fr);
+      gap: 8px;
+      background: #0f1224;
+      border: 2px solid #00f0ff;
+      border-radius: 12px;
+      padding: 10px;
+      box-shadow: 0 0 25px rgba(0, 240, 255, 0.2);
+      aspect-ratio: 1 / 1;
+    }
+    .card {
+      background: #181d38;
+      border: 1px solid #00f0ff;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 26px;
+      cursor: pointer;
+      transition: transform 0.2s, background 0.2s, box-shadow 0.2s;
+    }
+    .card:active { transform: scale(0.94); }
+    .card.flipped {
+      background: #11283e;
+      border-color: #00ffcc;
+      box-shadow: 0 0 12px #00ffcc;
+    }
+    .card.matched {
+      background: #14352a;
+      border-color: #00ff66;
+      box-shadow: 0 0 15px #00ff66;
+      opacity: 0.85;
+      pointer-events: none;
+    }
+
+    .btn {
+      background: #00ffcc;
+      color: #080912;
+      border: none;
+      padding: 10px;
+      font-size: 14px;
+      font-weight: 900;
+      border-radius: 6px;
+      cursor: pointer;
+      letter-spacing: 1px;
+      box-shadow: 0 0 15px #00ffcc;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="hud">
+      <div>PAIRS: <span id="pairs">0/8</span></div>
+      <div>MOVES: <span id="moves">0</span></div>
+    </div>
+
+    <div class="matrix-grid" id="grid"></div>
+
+    <button id="resetBtn" class="btn">RESET NEURAL MATRIX</button>
+  </div>
+
+  <script>
+    const ICONS = ['⚡', '🔋', '💾', '🛸', '🛰️', '📡', '💎', '🧬'];
+    let deck = [...ICONS, ...ICONS];
+    let flippedCards = [];
+    let matchedCount = 0;
+    let moves = 0;
+    let canClick = true;
+
+    const gridEl = document.getElementById('grid');
+    const pairsEl = document.getElementById('pairs');
+    const movesEl = document.getElementById('moves');
+    const resetBtn = document.getElementById('resetBtn');
+
+    // Web Audio Sound Engine
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    function tone(freq, type = 'sine', duration = 0.08) {
+      try {
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+      } catch (e) {}
+    }
+
+    function shuffle(arr) {
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    }
+
+    function initGame() {
+      deck = shuffle([...ICONS, ...ICONS]);
+      gridEl.innerHTML = '';
+      flippedCards = [];
+      matchedCount = 0;
+      moves = 0;
+      canClick = true;
+      pairsEl.textContent = '0/8';
+      movesEl.textContent = '0';
+
+      deck.forEach((icon, idx) => {
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.dataset.icon = icon;
+        card.dataset.idx = idx;
+        card.addEventListener('click', () => handleCardClick(card));
+        gridEl.appendChild(card);
+      });
+      tone(500, 'sine', 0.05);
+    }
+
+    function handleCardClick(card) {
+      if (!canClick || card.classList.contains('flipped') || card.classList.contains('matched')) return;
+
+      card.classList.add('flipped');
+      card.textContent = card.dataset.icon;
+      flippedCards.push(card);
+      tone(450, 'triangle', 0.04);
+      if (navigator.vibrate) navigator.vibrate(10);
+
+      if (flippedCards.length === 2) {
+        moves++;
+        movesEl.textContent = moves;
+        canClick = false;
+
+        const [c1, c2] = flippedCards;
+        if (c1.dataset.icon === c2.dataset.icon) {
+          // Match!
+          setTimeout(() => {
+            c1.classList.add('matched');
+            c2.classList.add('matched');
+            matchedCount++;
+            pairsEl.textContent = `${matchedCount}/8`;
+            flippedCards = [];
+            canClick = true;
+            tone(880, 'sine', 0.15);
+            if (navigator.vibrate) navigator.vibrate([30, 20, 30]);
+
+            if (matchedCount === 8) {
+              setTimeout(() => {
+                alert(`NEURAL MATRIX SYNCHRONIZED! Cleared in ${moves} moves.`);
+              }, 200);
+            }
+          }, 300);
+        } else {
+          // No match, flip back
+          setTimeout(() => {
+            c1.classList.remove('flipped');
+            c2.classList.remove('flipped');
+            c1.textContent = '';
+            c2.textContent = '';
+            flippedCards = [];
+            canClick = true;
+            tone(200, 'sawtooth', 0.08);
+          }, 700);
+        }
+      }
+    }
+
+    resetBtn.addEventListener('click', initGame);
+    initGame();
+  </script>
+</body>
+</html>

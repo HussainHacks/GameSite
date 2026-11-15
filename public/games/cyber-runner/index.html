@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Cyber Runner: Neon Rooftops</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; }
+    body {
+      background: #06070d;
+      color: #00f0ff;
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      width: 100vw;
+      overflow: hidden;
+      touch-action: none;
+    }
+    .wrapper {
+      position: relative;
+      width: 100%;
+      max-width: 600px;
+      height: 100%;
+      max-height: 380px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    canvas {
+      background: #0a0b16;
+      border: 2px solid #00f0ff;
+      border-radius: 8px;
+      box-shadow: 0 0 25px rgba(0, 240, 255, 0.25);
+      width: 100%;
+      height: 100%;
+      aspect-ratio: 16 / 9;
+    }
+
+    .touch-zones {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      z-index: 5;
+    }
+    .zone-slide {
+      flex: 1;
+      display: flex;
+      align-items: flex-end;
+      padding: 16px;
+      color: rgba(255, 0, 127, 0.4);
+      font-weight: 900;
+      font-size: 16px;
+    }
+    .zone-jump {
+      flex: 1;
+      display: flex;
+      align-items: flex-end;
+      justify-content: flex-end;
+      padding: 16px;
+      color: rgba(0, 240, 255, 0.4);
+      font-weight: 900;
+      font-size: 16px;
+    }
+
+    .overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(6, 7, 13, 0.9);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      border-radius: 8px;
+      z-index: 10;
+    }
+    .overlay.hidden { display: none; }
+    .overlay h1 { font-size: 28px; color: #00f0ff; text-shadow: 0 0 15px #00f0ff; letter-spacing: 2px; }
+    .overlay p { font-size: 14px; color: #fcee0a; }
+    .overlay button {
+      background: #00f0ff;
+      color: #06070d;
+      border: none;
+      padding: 12px 28px;
+      font-size: 16px;
+      font-weight: 900;
+      border-radius: 4px;
+      cursor: pointer;
+      box-shadow: 0 0 15px #00f0ff;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <canvas id="runnerCanvas" width="600" height="340"></canvas>
+
+    <div class="touch-zones">
+      <div class="zone-slide" id="touchSlide">▼ TAP TO SLIDE</div>
+      <div class="zone-jump" id="touchJump">TAP TO JUMP ▲</div>
+    </div>
+
+    <div id="overlay" class="overlay">
+      <h1 id="overlayTitle">CYBER RUNNER</h1>
+      <p id="overlayScore">Jump obstacles & slide under laser barriers</p>
+      <button id="startBtn">INITIATE RUN</button>
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('runnerCanvas');
+    const ctx = canvas.getContext('2d');
+    const overlay = document.getElementById('overlay');
+    const overlayTitle = document.getElementById('overlayTitle');
+    const overlayScore = document.getElementById('overlayScore');
+    const startBtn = document.getElementById('startBtn');
+
+    // Web Audio Sound Engine
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    function sound(freq, type = 'sine', duration = 0.08) {
+      try {
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+      } catch (e) {}
+    }
+
+    let isPlaying = false;
+    let distance = 0;
+    let highDistance = localStorage.getItem('cyber_runner_hi') || 0;
+    let gameSpeed = 5.5;
+
+    const GROUND_Y = 270;
+    let player = {
+      x: 80,
+      y: GROUND_Y - 40,
+      w: 24,
+      h: 40,
+      normalH: 40,
+      slideH: 20,
+      vy: 0,
+      gravity: 0.7,
+      jumpForce: -12.5,
+      isGrounded: false,
+      isSliding: false,
+      jumpsLeft: 2
+    };
+
+    let obstacles = [];
+    let particles = [];
+    let bgBuildings = [];
+    let spawnTimer = 0;
+
+    // Init background buildings for parallax
+    for (let i = 0; i < 15; i++) {
+      bgBuildings.push({
+        x: i * 50,
+        w: 40 + Math.random() * 30,
+        h: 60 + Math.random() * 120,
+        color: Math.random() > 0.5 ? '#11142a' : '#141834'
+      });
+    }
+
+    function jump() {
+      if (!isPlaying) return;
+      if (player.jumpsLeft > 0) {
+        player.vy = player.jumpForce;
+        player.isGrounded = false;
+        player.isSliding = false;
+        player.h = player.normalH;
+        player.jumpsLeft--;
+        sound(600 + (2 - player.jumpsLeft) * 150, 'triangle', 0.08);
+        if (navigator.vibrate) navigator.vibrate(15);
+      }
+    }
+
+    function startSlide() {
+      if (!isPlaying || !player.isGrounded) return;
+      player.isSliding = true;
+      player.h = player.slideH;
+      player.y = GROUND_Y - player.slideH;
+      sound(300, 'sine', 0.05);
+      if (navigator.vibrate) navigator.vibrate(10);
+    }
+
+    function stopSlide() {
+      if (player.isSliding) {
+        player.isSliding = false;
+        player.h = player.normalH;
+        player.y = GROUND_Y - player.normalH;
+      }
+    }
+
+    function spawnObstacle() {
+      const type = Math.random() < 0.55 ? 'ground' : 'overhead';
+      if (type === 'ground') {
+        obstacles.push({
+          x: canvas.width,
+          y: GROUND_Y - 32,
+          w: 24,
+          h: 32,
+          type: 'ground',
+          color: '#ff007f'
+        });
+      } else {
+        // High laser barrier you must slide under
+        obstacles.push({
+          x: canvas.width,
+          y: GROUND_Y - 60,
+          w: 40,
+          h: 36,
+          type: 'overhead',
+          color: '#fcee0a'
+        });
+      }
+    }
+
+    function update() {
+      if (!isPlaying) return;
+
+      distance += Math.floor(gameSpeed / 2);
+      gameSpeed = 5.5 + Math.min(6, distance * 0.001);
+
+      // Player Physics
+      player.vy += player.gravity;
+      player.y += player.vy;
+
+      if (player.y + player.h >= GROUND_Y) {
+        player.y = GROUND_Y - player.h;
+        player.vy = 0;
+        player.isGrounded = true;
+        player.jumpsLeft = 2;
+      }
+
+      // Parallax Buildings
+      bgBuildings.forEach(b => {
+        b.x -= gameSpeed * 0.25;
+        if (b.x + b.w < 0) {
+          b.x = canvas.width;
+          b.h = 60 + Math.random() * 120;
+        }
+      });
+
+      // Spawn Obstacles
+      spawnTimer++;
+      if (spawnTimer > 80 + Math.random() * 40) {
+        spawnObstacle();
+        spawnTimer = 0;
+      }
+
+      // Update Obstacles & Collision Check
+      for (let i = obstacles.length - 1; i >= 0; i--) {
+        const obs = obstacles[i];
+        obs.x -= gameSpeed;
+
+        // Collision Check (AABB)
+        if (player.x < obs.x + obs.w && player.x + player.w > obs.x &&
+            player.y < obs.y + obs.h && player.y + player.h > obs.y) {
+          return gameOver();
+        }
+
+        if (obs.x + obs.w < 0) {
+          obstacles.splice(i, 1);
+        }
+      }
+
+      // Trail Particles
+      if (player.isGrounded && Math.random() < 0.6) {
+        particles.push({
+          x: player.x,
+          y: player.y + player.h,
+          vx: -gameSpeed * 0.5,
+          vy: -Math.random() * 2,
+          life: 1.0,
+          color: player.isSliding ? '#ff007f' : '#00f0ff'
+        });
+      }
+
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.life -= 0.06;
+        if (p.life <= 0) particles.splice(i, 1);
+      }
+
+      draw();
+      requestAnimationFrame(update);
+    }
+
+    function draw() {
+      ctx.fillStyle = '#070810';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Neon Skyline Buildings
+      bgBuildings.forEach(b => {
+        ctx.fillStyle = b.color;
+        ctx.fillRect(b.x, GROUND_Y - b.h, b.w, b.h);
+        // Window dots
+        ctx.fillStyle = 'rgba(0, 240, 255, 0.3)';
+        ctx.fillRect(b.x + 8, GROUND_Y - b.h + 10, 4, 4);
+        ctx.fillRect(b.x + b.w - 12, GROUND_Y - b.h + 24, 4, 4);
+      });
+
+      // Ground (Neon Grid Edge)
+      ctx.strokeStyle = '#00f0ff';
+      ctx.lineWidth = 2;
+      ctx.shadowBlur = 12;
+      ctx.shadowColor = '#00f0ff';
+      ctx.beginPath();
+      ctx.moveTo(0, GROUND_Y);
+      ctx.lineTo(canvas.width, GROUND_Y);
+      ctx.stroke();
+
+      ctx.fillStyle = '#0c0e1e';
+      ctx.fillRect(0, GROUND_Y, canvas.width, canvas.height - GROUND_Y);
+      ctx.shadowBlur = 0;
+
+      // Draw Obstacles
+      obstacles.forEach(obs => {
+        ctx.shadowBlur = 12;
+        ctx.shadowColor = obs.color;
+        ctx.fillStyle = obs.color;
+        ctx.fillRect(obs.x, obs.y, obs.w, obs.h);
+      });
+
+      // Draw Player (Cyber Runner)
+      ctx.shadowBlur = 15;
+      ctx.shadowColor = player.isSliding ? '#ff007f' : '#00f0ff';
+      ctx.fillStyle = player.isSliding ? '#ff007f' : '#00f0ff';
+      ctx.fillRect(player.x, player.y, player.w, player.h);
+
+      // Visor Glow
+      ctx.fillStyle = '#fcee0a';
+      ctx.fillRect(player.x + player.w - 6, player.y + 4, 6, 6);
+      ctx.shadowBlur = 0;
+
+      // Draw Particles
+      particles.forEach(p => {
+        ctx.globalAlpha = p.life;
+        ctx.fillStyle = p.color;
+        ctx.fillRect(p.x, p.y, 3, 3);
+      });
+      ctx.globalAlpha = 1.0;
+
+      // HUD Distance
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '800 20px "Segoe UI", sans-serif';
+      ctx.textAlign = 'right';
+      ctx.fillText(`${distance}m`, canvas.width - 20, 36);
+    }
+
+    function startGame() {
+      distance = 0;
+      gameSpeed = 5.5;
+      obstacles = [];
+      particles = [];
+      player.y = GROUND_Y - player.normalH;
+      player.vy = 0;
+      player.isSliding = false;
+      player.h = player.normalH;
+      isPlaying = true;
+      overlay.classList.add('hidden');
+      update();
+    }
+
+    function gameOver() {
+      isPlaying = false;
+      sound(120, 'sawtooth', 0.4);
+      if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+
+      if (distance > highDistance) {
+        highDistance = distance;
+        localStorage.setItem('cyber_runner_hi', highDistance);
+      }
+      overlayTitle.textContent = "SIGNAL TERMINATED";
+      overlayScore.textContent = `DISTANCE: ${distance}m // BEST: ${highDistance}m`;
+      startBtn.textContent = "RUN AGAIN";
+      overlay.classList.remove('hidden');
+    }
+
+    // Touch Zones
+    document.getElementById('touchJump').addEventListener('touchstart', (e) => { e.preventDefault(); jump(); });
+    document.getElementById('touchSlide').addEventListener('touchstart', (e) => { e.preventDefault(); startSlide(); });
+    document.getElementById('touchSlide').addEventListener('touchend', (e) => { e.preventDefault(); stopSlide(); });
+
+    // Keyboard bindings
+    window.addEventListener('keydown', (e) => {
+      if (e.key === ' ' || e.key === 'ArrowUp' || e.key === 'w') {
+        e.preventDefault();
+        jump();
+      }
+      if (e.key === 'ArrowDown' || e.key === 's') {
+        e.preventDefault();
+        startSlide();
+      }
+    });
+
+    window.addEventListener('keyup', (e) => {
+      if (e.key === 'ArrowDown' || e.key === 's') {
+        stopSlide();
+      }
+    });
+
+    startBtn.addEventListener('click', startGame);
+    draw();
+  </script>
+</body>
+</html>

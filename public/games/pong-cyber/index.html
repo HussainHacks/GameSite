@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Pong 2099: Cyber Rally</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; }
+    body {
+      background: #06070d;
+      color: #00ff66;
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      height: 100vh;
+      width: 100vw;
+      padding: 10px;
+      overflow: hidden;
+      touch-action: none;
+    }
+    .hud {
+      width: 100%;
+      max-width: 440px;
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      padding: 8px 16px;
+      background: rgba(14, 16, 28, 0.9);
+      border: 1px solid #00ff66;
+      border-radius: 6px;
+      font-size: 16px;
+      font-weight: 900;
+    }
+    .hud span { color: #fcee0a; text-shadow: 0 0 8px #fcee0a; font-size: 20px; }
+
+    .canvas-container {
+      flex: 1;
+      width: 100%;
+      max-width: 440px;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    canvas {
+      background: #090a16;
+      border: 2px solid #00ff66;
+      border-radius: 8px;
+      box-shadow: 0 0 20px rgba(0, 255, 102, 0.25);
+      width: 100%;
+      max-height: 100%;
+      aspect-ratio: 3 / 4;
+    }
+
+    .overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(6, 7, 13, 0.9);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      border-radius: 8px;
+      z-index: 10;
+    }
+    .overlay.hidden { display: none; }
+    .overlay h2 { font-size: 26px; color: #00ff66; text-shadow: 0 0 12px #00ff66; }
+    .overlay button {
+      background: #00ff66;
+      color: #06070d;
+      border: none;
+      padding: 12px 28px;
+      font-size: 16px;
+      font-weight: 900;
+      border-radius: 4px;
+      cursor: pointer;
+      box-shadow: 0 0 15px #00ff66;
+    }
+    .help { font-size: 12px; color: #7f91a6; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="hud">
+    <div>PLAYER: <span id="pScore">0</span></div>
+    <div>CYBER AI: <span id="aiScore">0</span></div>
+  </div>
+
+  <div class="canvas-container">
+    <canvas id="pongCanvas" width="360" height="480"></canvas>
+
+    <div id="overlay" class="overlay">
+      <h2 id="overlayTitle">PONG 2099</h2>
+      <button id="startBtn">ENGAGE RALLY</button>
+    </div>
+  </div>
+
+  <div class="help">Touch and drag bottom paddle to deflect the energy sphere</div>
+
+  <script>
+    const canvas = document.getElementById('pongCanvas');
+    const ctx = canvas.getContext('2d');
+    const pScoreEl = document.getElementById('pScore');
+    const aiScoreEl = document.getElementById('aiScore');
+    const overlay = document.getElementById('overlay');
+    const startBtn = document.getElementById('startBtn');
+
+    // Web Audio Sound Engine
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    function tone(freq, type = 'sine', duration = 0.06) {
+      try {
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+      } catch (e) {}
+    }
+
+    let isPlaying = false;
+    let playerScore = 0;
+    let aiScore = 0;
+
+    let playerPaddle = { x: 140, y: 445, w: 75, h: 10, speed: 7 };
+    let aiPaddle = { x: 140, y: 25, w: 75, h: 10, speed: 4.2 };
+    let ball = { x: 180, y: 240, r: 6, vx: 3, vy: 4, speed: 5 };
+    let particles = [];
+
+    function addSparks(x, y, color) {
+      for (let i = 0; i < 8; i++) {
+        const a = Math.random() * Math.PI * 2;
+        const s = Math.random() * 3 + 1;
+        particles.push({
+          x, y,
+          vx: Math.cos(a) * s,
+          vy: Math.sin(a) * s,
+          life: 1.0,
+          color
+        });
+      }
+    }
+
+    function resetBall(servingPlayer) {
+      ball.x = canvas.width / 2;
+      ball.y = canvas.height / 2;
+      ball.speed = 5;
+      ball.vx = (Math.random() > 0.5 ? 1 : -1) * (Math.random() * 2 + 2);
+      ball.vy = servingPlayer === 'player' ? -ball.speed : ball.speed;
+    }
+
+    function update() {
+      if (!isPlaying) return;
+
+      // Ball Movement
+      ball.x += ball.vx;
+      ball.y += ball.vy;
+
+      // AI Tracking
+      const aiTarget = ball.x - aiPaddle.w / 2;
+      aiPaddle.x += (aiTarget - aiPaddle.x) * 0.12;
+      aiPaddle.x = Math.max(10, Math.min(canvas.width - aiPaddle.w - 10, aiPaddle.x));
+
+      // Side Wall Bounces
+      if (ball.x - ball.r < 0) { ball.x = ball.r; ball.vx *= -1; tone(350); }
+      if (ball.x + ball.r > canvas.width) { ball.x = canvas.width - ball.r; ball.vx *= -1; tone(350); }
+
+      // Player Paddle Hit
+      if (ball.y + ball.r >= playerPaddle.y && ball.y - ball.r <= playerPaddle.y + playerPaddle.h &&
+          ball.x >= playerPaddle.x && ball.x <= playerPaddle.x + playerPaddle.w) {
+        const hitPos = (ball.x - (playerPaddle.x + playerPaddle.w / 2)) / (playerPaddle.w / 2);
+        ball.vx = hitPos * 5.5;
+        ball.vy = -Math.abs(ball.vy) * 1.03;
+        ball.y = playerPaddle.y - ball.r;
+        tone(600, 'square');
+        addSparks(ball.x, ball.y, '#00ff66');
+        if (navigator.vibrate) navigator.vibrate(15);
+      }
+
+      // AI Paddle Hit
+      if (ball.y - ball.r <= aiPaddle.y + aiPaddle.h && ball.y + ball.r >= aiPaddle.y &&
+          ball.x >= aiPaddle.x && ball.x <= aiPaddle.x + aiPaddle.w) {
+        const hitPos = (ball.x - (aiPaddle.x + aiPaddle.w / 2)) / (aiPaddle.w / 2);
+        ball.vx = hitPos * 5.5;
+        ball.vy = Math.abs(ball.vy) * 1.03;
+        ball.y = aiPaddle.y + aiPaddle.h + ball.r;
+        tone(450, 'triangle');
+        addSparks(ball.x, ball.y, '#ff007f');
+      }
+
+      // Point Scored
+      if (ball.y < 0) {
+        playerScore++;
+        pScoreEl.textContent = playerScore;
+        tone(880, 'sine', 0.2);
+        resetBall('ai');
+        checkScore();
+      } else if (ball.y > canvas.height) {
+        aiScore++;
+        aiScoreEl.textContent = aiScore;
+        tone(160, 'sawtooth', 0.25);
+        resetBall('player');
+        checkScore();
+      }
+
+      // Particles
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.life -= 0.05;
+        if (p.life <= 0) particles.splice(i, 1);
+      }
+
+      draw();
+      requestAnimationFrame(update);
+    }
+
+    function checkScore() {
+      if (playerScore >= 7 || aiScore >= 7) {
+        isPlaying = false;
+        document.getElementById('overlayTitle').textContent = playerScore >= 7 ? "HUMAN VICTORY" : "AI SUPREMACY";
+        startBtn.textContent = "PLAY AGAIN";
+        overlay.classList.remove('hidden');
+      }
+    }
+
+    function draw() {
+      ctx.fillStyle = '#090a16';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Center Divider line
+      ctx.strokeStyle = 'rgba(0, 255, 102, 0.2)';
+      ctx.setLineDash([8, 8]);
+      ctx.beginPath();
+      ctx.moveTo(0, canvas.height / 2);
+      ctx.lineTo(canvas.width, canvas.height / 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Draw AI Paddle
+      ctx.shadowBlur = 12;
+      ctx.shadowColor = '#ff007f';
+      ctx.fillStyle = '#ff007f';
+      ctx.fillRect(aiPaddle.x, aiPaddle.y, aiPaddle.w, aiPaddle.h);
+
+      // Draw Player Paddle
+      ctx.shadowBlur = 12;
+      ctx.shadowColor = '#00ff66';
+      ctx.fillStyle = '#00ff66';
+      ctx.fillRect(playerPaddle.x, playerPaddle.y, playerPaddle.w, playerPaddle.h);
+
+      // Draw Ball
+      ctx.shadowBlur = 15;
+      ctx.shadowColor = '#fcee0a';
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+
+      // Draw Particles
+      particles.forEach(p => {
+        ctx.globalAlpha = p.life;
+        ctx.fillStyle = p.color;
+        ctx.fillRect(p.x, p.y, 3, 3);
+      });
+      ctx.globalAlpha = 1.0;
+    }
+
+    function startGame() {
+      playerScore = 0;
+      aiScore = 0;
+      pScoreEl.textContent = 0;
+      aiScoreEl.textContent = 0;
+      resetBall('player');
+      isPlaying = true;
+      overlay.classList.add('hidden');
+      update();
+    }
+
+    function movePaddle(clientX) {
+      const rect = canvas.getBoundingClientRect();
+      const x = (clientX - rect.left) * (canvas.width / rect.width);
+      playerPaddle.x = Math.max(0, Math.min(canvas.width - playerPaddle.w, x - playerPaddle.w / 2));
+    }
+
+    canvas.addEventListener('touchmove', e => {
+      e.preventDefault();
+      movePaddle(e.touches[0].clientX);
+    }, {passive: false});
+
+    canvas.addEventListener('touchstart', e => {
+      movePaddle(e.touches[0].clientX);
+    }, {passive: true});
+
+    canvas.addEventListener('mousemove', e => {
+      movePaddle(e.clientX);
+    });
+
+    startBtn.addEventListener('click', startGame);
+    draw();
+  </script>
+</body>
+</html>

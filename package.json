@@ -1,0 +1,20 @@
+{
+  "name": "cyberpunk-gamesite",
+  "version": "1.0.0",
+  "description": "Cyberpunk-themed mobile-first web gaming portal featuring 100+ open source games",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "deploy": "npx netlify deploy --prod --dir=public"
+  },
+  "keywords": [
+    "gaming",
+    "portal",
+    "cyberpunk",
+    "mobile-gaming",
+    "open-source-games",
+    "html5-games"
+  ],
+  "author": "",
+  "license": "MIT"
+}
