@@ -4,17 +4,25 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
   <meta name="theme-color" content="#00f0ff">
-  <meta name="description" content="Neon Arcade — Mobile-optimized Cyberpunk web gaming portal featuring a growing library of verified open-source games. Play instantly in your browser!">
+  <meta name="description" content="Neon Arcade — Mobile-optimized Cyberpunk web gaming portal featuring 16 verified open-source games. Play instantly in your browser!">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>NEON ARCADE // Cyberpunk Mobile Gaming Portal</title>
+  <title>NEON ARCADE // Cyberpunk Web Gaming Portal</title>
+
+  <!-- Open Graph / Social Metadata -->
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="NEON ARCADE // Cyberpunk Web Gaming Portal">
+  <meta property="og:description" content="Play 16 verified open-source HTML5 & JavaScript games directly in your browser. Mobile-optimized, zero ads, 100% free.">
+  <meta property="og:image" content="/assets/thumbs/neon-snake.webp">
+  <meta property="og:url" content="https://idyllic-buttercream-582611.netlify.app/">
+  <link rel="canonical" href="https://idyllic-buttercream-582611.netlify.app/">
 
   <link rel="manifest" href="/manifest.json">
   <link rel="icon" type="image/svg+xml" href="/assets/icons/icon-192.svg">
   <link rel="apple-touch-icon" href="/assets/icons/icon-192.svg">
 
-  <link rel="stylesheet" href="/css/cyberpunk.css?v=5">
-  <link rel="stylesheet" href="/css/gamepad.css?v=5">
+  <link rel="stylesheet" href="/css/cyberpunk.css?v=6">
+  <link rel="stylesheet" href="/css/gamepad.css?v=6">
 </head>
 <body>
 
@@ -24,158 +32,194 @@
   <!-- Cyberpunk Top Navigation Bar -->
   <header class="cyber-header">
     <div class="header-container">
-      <div class="brand" onclick="window.scrollTo({top: 0, behavior: 'smooth'})">
+      <div class="brand" onclick="window.scrollTo({top: 0, behavior: 'smooth'})" role="button" tabindex="0" aria-label="Neon Arcade Home">
         <div class="brand-icon">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#00f0ff" stroke-width="2">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#00f0ff" stroke-width="2" aria-hidden="true">
             <rect x="2" y="6" width="20" height="12" rx="3" stroke="#00f0ff"/>
             <path d="M6 12h4m-2-2v4m8-2h.01m3-2h.01" stroke="#ff007f" stroke-width="2.5" stroke-linecap="round"/>
           </svg>
         </div>
         <div class="brand-text">
           <h1>NEON ARCADE</h1>
-          <span id="headerSubtitle">CYBERPUNK // <span id="headerGameCount">0</span> OPEN SOURCE GAMES</span>
+          <span id="headerSubtitle">CYBERPUNK // <span id="headerGameCount">16</span> OPEN SOURCE GAMES</span>
         </div>
       </div>
 
       <div class="header-actions">
-        <button class="btn-icon" id="soundToggleBtn" title="Toggle Sound FX">🔊</button>
-        <button class="btn-icon" id="headerFavBtn" title="View Favorites" onclick="document.querySelector('[data-cat=favorites]').click()">
+        <button class="btn-icon" id="soundToggleBtn" title="Toggle Sound FX" aria-label="Toggle Sound Effects" type="button">🔊</button>
+        <button class="btn-icon" id="headerFavBtn" title="View Favorites" aria-label="View Favorites" type="button" onclick="document.querySelector('[data-cat=favorites]')?.click()">
           ★
           <span class="badge-count" id="favCountBadge">0</span>
         </button>
-        <button class="btn-icon" id="pwaInstallBtn" style="display: none;" title="Install Cyberpunk App">⬇</button>
+        <button class="btn-icon" id="pwaInstallBtn" style="display: none;" title="Install Cyberpunk App" aria-label="Install Neon Arcade PWA" type="button">⬇</button>
       </div>
     </div>
   </header>
 
   <!-- Sticky Horizontal Category Ribbon -->
-  <nav class="category-nav">
+  <nav class="category-nav" aria-label="Game categories">
     <div class="category-track">
-      <button class="cat-pill active" data-cat="all">⚡ ALL CORES <span id="allCoresCount">(0)</span></button>
-      <button class="cat-pill" data-cat="arcade">👾 ARCADE & RETRO</button>
-      <button class="cat-pill" data-cat="puzzle">🧩 PUZZLE & BRAIN</button>
-      <button class="cat-pill" data-cat="action">⚔️ ACTION & PLATFORM</button>
-      <button class="cat-pill" data-cat="casual">🎯 CASUAL & TAP</button>
-      <button class="cat-pill" data-cat="board">♟️ BOARD & CARDS</button>
-      <button class="cat-pill" data-cat="racing">🏎️ RACING & SPORTS</button>
-      <button class="cat-pill" data-cat="favorites">★ FAVORITES</button>
-      <button class="cat-pill" data-cat="recent">🕒 RECENTLY PLAYED</button>
+      <button class="cat-pill active" data-cat="all" type="button">⚡ ALL GAMES <span id="allCoresCount">(16)</span></button>
+      <button class="cat-pill" data-cat="arcade" type="button">👾 ARCADE <span id="arcadeCount">(5)</span></button>
+      <button class="cat-pill" data-cat="puzzle" type="button">🧩 PUZZLE <span id="puzzleCount">(5)</span></button>
+      <button class="cat-pill" data-cat="action" type="button">⚔️ ACTION <span id="actionCount">(3)</span></button>
+      <button class="cat-pill" data-cat="board" type="button">♟️ BOARD <span id="boardCount">(2)</span></button>
+      <button class="cat-pill" data-cat="casual" type="button">🎯 CASUAL <span id="casualCount">(1)</span></button>
+      <button class="cat-pill" data-cat="favorites" type="button">★ FAVORITES</button>
+      <button class="cat-pill" data-cat="recent" type="button">🕒 RECENTLY PLAYED</button>
     </div>
   </nav>
 
   <!-- Search Matrix Input -->
-  <section class="search-container">
+  <section class="search-container" aria-label="Search catalog">
     <div class="search-box">
-      <input type="text" id="searchInput" class="search-input" placeholder="Search cyber games, tags, or genres..." autocomplete="off">
-      <button class="search-clear-btn" id="searchClearBtn">&times;</button>
+      <input type="text" id="searchInput" class="search-input" placeholder="Search 16 verified cyber games, tags, or genres..." autocomplete="off" aria-label="Search games">
+      <button class="search-clear-btn" id="searchClearBtn" aria-label="Clear search input" type="button">&times;</button>
     </div>
   </section>
 
   <!-- Filter Chips & Sorting Row -->
-  <section class="filter-tags-row">
+  <section class="filter-tags-row" aria-label="Filters and sorting">
     <div class="quick-filters">
-      <button class="filter-chip" data-filter="touch">👆 TOUCH OPTIMIZED</button>
-      <button class="filter-chip" data-filter="local">💾 OFFLINE BUILT-IN</button>
+      <button class="filter-chip" data-filter="touch" type="button" aria-label="Filter touch optimized games">👆 TOUCH OPTIMIZED</button>
+      <button class="filter-chip" data-filter="local" type="button" aria-label="Filter offline built-in games">💾 OFFLINE BUILT-IN</button>
     </div>
 
     <div class="sort-box">
-      <select id="sortSelect" class="sort-select">
-        <option value="popular">SORT: MOST POPULAR</option>
+      <label for="sortSelect" class="sr-only" style="position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); border: 0;">Sort games</label>
+      <select id="sortSelect" class="sort-select" aria-label="Sort games">
+        <option value="popular">SORT: MOST PLAYED</option>
+        <option value="added">SORT: RECENTLY ADDED</option>
         <option value="title">SORT: TITLE (A - Z)</option>
+        <option value="favorites">SORT: FAVORITES FIRST</option>
       </select>
     </div>
   </section>
 
   <!-- Live Status & Counter Banner -->
-  <div class="stats-banner">
+  <div class="stats-banner" role="status">
     <div class="stat-status">MATRIX STATUS: <span class="status-indicator"><span class="status-dot"></span>CONNECTED</span></div>
-    <span class="stat-divider">//</span>
-    <div class="games-counter" id="gamesCount">0 GAMES ONLINE</div>
+    <span class="stat-divider" aria-hidden="true">//</span>
+    <div class="games-counter" id="gamesCount">16 GAMES ONLINE</div>
   </div>
 
   <!-- Main Game Cards Grid -->
-  <main class="main-content">
-    <div class="games-grid" id="gamesGrid">
+  <main class="main-content" id="mainContent">
+    <div class="games-grid" id="gamesGrid" role="region" aria-label="Games Catalog">
       <!-- Injected dynamically via app.js -->
     </div>
   </main>
 
   <!-- Fullscreen Cyberpunk Game Player Modal -->
-  <div class="game-modal" id="gameModal">
-    <header class="modal-header">
-      <div class="modal-title-box">
-        <button class="modal-back-btn" id="modalBackBtn" title="Exit to Game Matrix">◀ <span class="btn-text">EXIT HUD</span></button>
-        <div class="modal-game-title" id="modalGameTitle">GAME TITLE</div>
-      </div>
-
-      <div class="modal-actions">
-        <button class="modal-action-btn" id="modalGamepadBtn" title="Toggle Virtual Controller"><span class="btn-icon">🎮</span><span class="btn-text">PAD</span></button>
-        <button class="modal-action-btn" id="modalFavBtn" title="Favorite Game"><span class="btn-icon" id="modalFavIcon">☆</span><span class="btn-text" id="modalFavText">FAVORITE</span></button>
-        <button class="modal-action-btn" id="modalShareBtn" title="Share Game"><span class="btn-icon">🔗</span><span class="btn-text">SHARE</span></button>
-        <button class="modal-action-btn" id="modalFullscreenBtn" title="Toggle Fullscreen"><span class="btn-icon">⛶</span><span class="btn-text">FULLSCREEN</span></button>
-      </div>
-    </header>
-
-    <div class="modal-viewport">
-      <iframe id="modalIframe" class="game-iframe" allow="autoplay; fullscreen; accelerometer; gyroscope" sandbox="allow-scripts allow-same-origin allow-popups allow-forms"></iframe>
-
-      <!-- On-Screen Cyberpunk Virtual Touch Controller -->
-      <div class="virtual-gamepad hidden" id="virtualGamepad">
-        <!-- D-Pad Left -->
-        <div class="gamepad-dpad">
-          <button class="pad-btn pad-up" id="btnPadUp">▲</button>
-          <button class="pad-btn pad-left" id="btnPadLeft">◀</button>
-          <div class="pad-center"></div>
-          <button class="pad-btn pad-right" id="btnPadRight">▶</button>
-          <button class="pad-btn pad-down" id="btnPadDown">▼</button>
+  <div class="game-modal" id="gameModal" role="dialog" aria-modal="true" aria-labelledby="modalGameTitle">
+    <div class="modal-stage" id="modalStage">
+      <header class="modal-header">
+        <div class="modal-title-box">
+          <button class="modal-back-btn" id="modalBackBtn" title="Exit to Game Matrix" aria-label="Exit Game" type="button">
+            <svg class="modal-btn-svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5m7-7l-7 7 7 7"/></svg>
+            <span class="btn-text">EXIT</span>
+          </button>
+          <div class="modal-game-title" id="modalGameTitle">GAME TITLE</div>
         </div>
 
-        <!-- Action Buttons Right -->
-        <div class="gamepad-actions">
-          <button class="act-btn btn-y" id="btnActY">Y</button>
-          <button class="act-btn btn-x" id="btnActX">X</button>
-          <button class="act-btn btn-b" id="btnActB">B</button>
-          <button class="act-btn btn-a" id="btnActA">A</button>
+        <div class="modal-actions">
+          <button class="modal-action-btn" id="modalGamepadBtn" title="Toggle Virtual Controller" aria-label="Toggle Virtual Gamepad" type="button">
+            <svg class="modal-btn-svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="6" width="20" height="12" rx="3"/><path d="M6 12h4m-2-2v4m7-2h.01m3-2h.01"/></svg>
+            <span class="btn-text">PAD</span>
+          </button>
+          <button class="modal-action-btn" id="modalFavBtn" title="Favorite Game" aria-label="Favorite Game" type="button">
+            <svg class="modal-btn-svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            <span class="btn-text" id="modalFavText">FAV</span>
+          </button>
+          <button class="modal-action-btn" id="modalShareBtn" title="Share Game" aria-label="Share Game URL" type="button">
+            <svg class="modal-btn-svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+            <span class="btn-text">SHARE</span>
+          </button>
+          <button class="modal-action-btn" id="modalFullscreenBtn" title="Toggle Fullscreen" aria-label="Toggle Fullscreen" type="button">
+            <svg class="modal-btn-svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+            <span class="btn-text">FULL</span>
+          </button>
+        </div>
+      </header>
+
+      <div class="modal-viewport">
+        <!-- Loading State Indicator -->
+        <div class="modal-loader" id="modalLoader" role="status" aria-live="polite">
+          <div class="loader-spinner"></div>
+          <div class="loader-title" id="loaderTitle">INITIALIZING CORE...</div>
+          <div class="loader-sub">ESTABLISHING NEURAL LINK</div>
+        </div>
+
+        <!-- Error State Banner -->
+        <div class="modal-error hidden" id="modalError" role="alert">
+          <div class="error-glitch-icon" aria-hidden="true">⚠️</div>
+          <div class="error-title">LAUNCH FAILED // CONNECTION LOST</div>
+          <p class="error-msg" id="modalErrorMsg">Failed to initialize game core. Check network connection or retry.</p>
+          <div class="error-actions">
+            <button class="cyber-btn" id="modalRetryBtn" type="button">RETRY LAUNCH</button>
+            <button class="cyber-btn btn-secondary" id="modalReturnBtn" type="button">RETURN TO ARCADE</button>
+          </div>
+        </div>
+
+        <iframe id="modalIframe" class="game-iframe" title="Game Viewport" allow="autoplay; fullscreen; accelerometer; gyroscope"></iframe>
+
+        <!-- On-Screen Cyberpunk Virtual Touch Controller -->
+        <div class="virtual-gamepad hidden" id="virtualGamepad" aria-label="Virtual Gamepad Controller">
+          <!-- D-Pad Left -->
+          <div class="gamepad-dpad">
+            <button class="pad-btn pad-up" id="btnPadUp" aria-label="Direction Up" type="button">▲</button>
+            <button class="pad-btn pad-left" id="btnPadLeft" aria-label="Direction Left" type="button">◀</button>
+            <div class="pad-center"></div>
+            <button class="pad-btn pad-right" id="btnPadRight" aria-label="Direction Right" type="button">▶</button>
+            <button class="pad-btn pad-down" id="btnPadDown" aria-label="Direction Down" type="button">▼</button>
+          </div>
+
+          <!-- Action Buttons Right -->
+          <div class="gamepad-actions">
+            <button class="act-btn btn-y" id="btnActY" aria-label="Action Y" type="button">Y</button>
+            <button class="act-btn btn-x" id="btnActX" aria-label="Action X" type="button">X</button>
+            <button class="act-btn btn-b" id="btnActB" aria-label="Action B" type="button">B</button>
+            <button class="act-btn btn-a" id="btnActA" aria-label="Action A" type="button">A</button>
+          </div>
         </div>
       </div>
+
+      <!-- Desktop Metadata Footer (Hidden on Mobile Full-Screen Player) -->
+      <footer class="modal-footer">
+        <div id="modalInstructions" style="color: #00ffcc; font-weight: 700;">Swipe or use controls to play</div>
+        <div class="modal-license-info">
+          <span id="modalGameMeta" style="color: var(--text-dim); margin-right: 8px;"></span>
+          <a id="modalSourceLink" href="#" target="_blank" rel="noopener noreferrer">📂 GitHub Source Code</a>
+          <span aria-hidden="true">//</span>
+          <span id="modalLicense" style="color: var(--neon-yellow);">MIT</span>
+        </div>
+      </footer>
     </div>
-
-    <!-- Keyboard Focus Hint Line -->
-    <div class="focus-hint" id="focusHint">Click the game if the keys do not respond</div>
-
-    <footer class="modal-footer">
-      <div id="modalInstructions" style="color: #00ffcc; font-weight: 700;">Swipe or use controls to play</div>
-      <div class="modal-license-info">
-        <span id="modalGameMeta" style="color: var(--text-dim); margin-right: 8px;"></span>
-        <a id="modalSourceLink" href="#" target="_blank" rel="noopener noreferrer">📂 GitHub Source Code</a>
-        <span>//</span>
-        <span id="modalLicense" style="color: var(--neon-yellow);">MIT</span>
-      </div>
-    </footer>
   </div>
 
   <!-- Floating Cyberpunk Notification Toast -->
   <div class="cyber-toast" id="cyberToast" role="status" aria-live="polite"></div>
 
   <!-- Mobile Bottom Sticky Navigation -->
-  <nav class="mobile-bottom-nav">
-    <button class="nav-item active" data-nav="home">
-      <span class="nav-icon">⚡</span>
+  <nav class="mobile-bottom-nav" aria-label="Mobile quick navigation">
+    <button class="nav-item active" data-nav="home" type="button">
+      <span class="nav-icon" aria-hidden="true">⚡</span>
       <span>Games</span>
     </button>
-    <button class="nav-item" data-nav="search">
-      <span class="nav-icon">🔍</span>
+    <button class="nav-item" data-nav="search" type="button">
+      <span class="nav-icon" aria-hidden="true">🔍</span>
       <span>Search</span>
     </button>
-    <button class="nav-item" data-nav="favorites">
-      <span class="nav-icon">★</span>
+    <button class="nav-item" data-nav="favorites" type="button">
+      <span class="nav-icon" aria-hidden="true">★</span>
       <span>Favorites</span>
     </button>
   </nav>
 
   <!-- Scripts -->
-  <script src="/js/games-data.js?v=5"></script>
-  <script src="/js/gamepad.js?v=5"></script>
-  <script src="/js/app.js?v=5"></script>
+  <script src="/js/storage-guard.js?v=6"></script>
+  <script src="/js/games-data.js?v=6"></script>
+  <script src="/js/gamepad.js?v=6"></script>
+  <script src="/js/app.js?v=6"></script>
 </body>
 </html>

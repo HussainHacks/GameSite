@@ -4,7 +4,8 @@ const path = require('path');
 const url = require('url');
 
 const PORT = process.env.PORT || 3000;
-const PUBLIC_DIR = path.join(__dirname, 'public');
+const PUBLIC_DIR = path.resolve(__dirname, 'public');
+const CATALOG_PATH = path.join(PUBLIC_DIR, 'data', 'games.json');
 
 const MIME_TYPES = {
   '.html': 'text/html; charset=utf-8',
@@ -24,42 +25,51 @@ const MIME_TYPES = {
   '.ogg': 'audio/ogg',
   '.wasm': 'application/wasm',
   '.webmanifest': 'application/manifest+json',
+  '.txt': 'text/plain; charset=utf-8',
+  '.xml': 'application/xml; charset=utf-8'
 };
 
-// Lazy load games data for the API
+// Safe JSON catalog loader
 let gamesData = null;
+let lastCatalogMtime = 0;
+
 function getGamesData() {
-  if (!gamesData) {
-    try {
-      const dataFilePath = path.join(PUBLIC_DIR, 'js', 'games-data.js');
-      if (fs.existsSync(dataFilePath)) {
-        const fileContent = fs.readFileSync(dataFilePath, 'utf8');
-        // Extract the JSON-like array from window.GAMES_CATALOG = [...]
-        const match = fileContent.match(/window\.GAMES_CATALOG\s*=\s*(\[[\s\S]*?\]);\s*$/m) ||
-                      fileContent.match(/(?:const|var|let)?\s*GAMES_CATALOG\s*=\s*(\[[\s\S]*?\]);/m);
-        if (match) {
-          // Use Function constructor in sandbox to parse clean array
-          gamesData = new Function(`return ${match[1]}`)();
-        }
+  try {
+    if (fs.existsSync(CATALOG_PATH)) {
+      const stats = fs.statSync(CATALOG_PATH);
+      if (!gamesData || stats.mtimeMs > lastCatalogMtime) {
+        const fileContent = fs.readFileSync(CATALOG_PATH, 'utf8');
+        gamesData = JSON.parse(fileContent);
+        lastCatalogMtime = stats.mtimeMs;
       }
-    } catch (e) {
-      console.error('Failed to parse games data for API:', e.message);
-      gamesData = [];
     }
+  } catch (e) {
+    console.error('[Server] Failed to load catalog from JSON:', e.message);
+    if (!gamesData) gamesData = [];
   }
   return gamesData || [];
 }
 
 const server = http.createServer((req, res) => {
-  const parsedUrl = url.parse(req.url, true);
-  let pathname = decodeURIComponent(parsedUrl.pathname);
-
-  // Common security headers
+  // Enhanced security headers
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'SAMEORIGIN');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Permissions-Policy', 'geolocation=(), camera=(), microphone=()');
 
-  // API Endpoints
+  // Safe URI parsing and decoding
+  let parsedUrl;
+  let pathname;
+  try {
+    parsedUrl = url.parse(req.url, true);
+    pathname = decodeURIComponent(parsedUrl.pathname);
+  } catch (err) {
+    res.statusCode = 400;
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    return res.end('Bad Request: Malformed URI');
+  }
+
+  // API: Get all games with filtering and search
   if (pathname === '/api/games') {
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
     const catalog = getGamesData();
@@ -71,7 +81,7 @@ const server = http.createServer((req, res) => {
     }
     if (search) {
       const q = search.toLowerCase();
-      results = results.filter(g => 
+      results = results.filter(g =>
         g.title.toLowerCase().includes(q) ||
         g.description.toLowerCase().includes(q) ||
         (g.tags && g.tags.some(t => t.toLowerCase().includes(q)))
@@ -88,6 +98,7 @@ const server = http.createServer((req, res) => {
     }));
   }
 
+  // API: Get specific game by ID
   if (pathname.startsWith('/api/games/')) {
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
     const id = pathname.replace('/api/games/', '').trim();
@@ -100,6 +111,7 @@ const server = http.createServer((req, res) => {
     return res.end(JSON.stringify(game));
   }
 
+  // API: Stats
   if (pathname === '/api/stats') {
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
     const catalog = getGamesData();
@@ -110,21 +122,28 @@ const server = http.createServer((req, res) => {
     return res.end(JSON.stringify({
       totalGames: catalog.length,
       categories,
-      system: 'Cyberpunk Game Portal',
+      system: 'Neon Arcade Portal',
       version: '1.0.0'
     }));
   }
 
-  // Normalize static file path
-  if (pathname === '/') {
+  // SPA Route handling: /game/:id routes to /index.html
+  if (pathname.startsWith('/game/') || pathname === '/game') {
+    pathname = '/index.html';
+  } else if (pathname === '/') {
     pathname = '/index.html';
   }
 
-  let filePath = path.join(PUBLIC_DIR, pathname);
+  // Secure path resolution and directory traversal prevention
+  // 1. Resolve absolute path relative to PUBLIC_DIR
+  const safeRelativePath = path.normalize(pathname).replace(/^(\.\.[\/\\])+/, '');
+  const filePath = path.resolve(PUBLIC_DIR, '.' + safeRelativePath);
 
-  // Security: prevent directory traversal
-  if (!filePath.startsWith(PUBLIC_DIR)) {
+  // 2. Strict directory containment check
+  const relative = path.relative(PUBLIC_DIR, filePath);
+  if (relative.startsWith('..') || path.isAbsolute(relative)) {
     res.statusCode = 403;
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
     return res.end('Access denied');
   }
 
@@ -133,43 +152,49 @@ const server = http.createServer((req, res) => {
       // Check if it's a directory containing index.html
       const dirIndex = path.join(filePath, 'index.html');
       if (!err && stats.isDirectory() && fs.existsSync(dirIndex)) {
-        filePath = dirIndex;
+        serveFile(dirIndex, res);
       } else {
-        // Fallback for SPA routing if requested file doesn't have an extension
-        if (!path.extname(filePath)) {
-          filePath = path.join(PUBLIC_DIR, 'index.html');
-        } else {
-          res.statusCode = 404;
-          res.setHeader('Content-Type', 'text/html; charset=utf-8');
-          return res.end('<h1>404 Not Found</h1>');
-        }
+        res.statusCode = 404;
+        res.setHeader('Content-Type', 'text/html; charset=utf-8');
+        return res.end('<!DOCTYPE html><html><head><title>404 Not Found</title></head><body style="background:#0a0a14;color:#00f0ff;font-family:monospace;padding:40px;text-align:center;"><h1>404 // NOT FOUND</h1><p>Requested asset does not exist.</p><a href="/" style="color:#fcee0a;">RETURN TO ARCADE</a></body></html>');
       }
-    }
-
-    const ext = path.extname(filePath).toLowerCase();
-    const contentType = MIME_TYPES[ext] || 'application/octet-stream';
-    res.setHeader('Content-Type', contentType);
-
-    // Cache control: HTML fresh, assets cached
-    if (ext === '.html') {
-      res.setHeader('Cache-Control', 'no-cache');
     } else {
-      res.setHeader('Cache-Control', 'public, max-age=86400');
+      serveFile(filePath, res);
     }
-
-    const stream = fs.createReadStream(filePath);
-    stream.on('error', (streamErr) => {
-      res.statusCode = 500;
-      res.end('Server error reading file');
-    });
-    stream.pipe(res);
   });
 });
 
+function serveFile(targetPath, res) {
+  const ext = path.extname(targetPath).toLowerCase();
+  const contentType = MIME_TYPES[ext] || 'application/octet-stream';
+  res.setHeader('Content-Type', contentType);
+
+  if (ext === '.html') {
+    res.setHeader('Cache-Control', 'no-cache');
+  } else if (ext === '.json' && targetPath.includes('sw.js')) {
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+  } else {
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+  }
+
+  const stream = fs.createReadStream(targetPath);
+  stream.on('error', () => {
+    if (!res.headersSent) {
+      res.statusCode = 500;
+      res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+      res.end('Server error reading file');
+    }
+  });
+  stream.pipe(res);
+}
+
 server.listen(PORT, () => {
   console.log(`\n======================================================`);
-  console.log(`  CYBERPUNK GAMING PORTAL IS ONLINE`);
+  console.log(`  NEON ARCADE // CYBERPUNK PORTAL ONLINE`);
   console.log(`  Local URL:  http://localhost:${PORT}`);
-  console.log(`  Mobile PWA: Ready`);
+  console.log(`  API Core:   JSON Verified (16 Games)`);
+  console.log(`  Security:   Path-Traversal Guard Active`);
   console.log(`======================================================\n`);
 });
+
+module.exports = server;

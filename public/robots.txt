@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://idyllic-buttercream-582611.netlify.app/sitemap.xml

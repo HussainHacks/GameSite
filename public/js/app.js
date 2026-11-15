@@ -1,22 +1,46 @@
 /**
  * Neon Arcade // Main Cyberpunk Game Portal Engine
- * Handles rendering, instant search, category filtering, favorites,
- * dynamic cyberpunk thumbnail generation, game player modal, and Web Audio SFX.
+ * Handles rendering, routing (/game/:id), instant search, category filtering,
+ * favorites, local play tracking, game player modal with loading/error states,
+ * virtual gamepad, and Web Audio SFX.
  */
 
 (function() {
   'use strict';
+
+  // Safe Storage wrapper
+  const storage = window.safeStorage || {
+    getItem(k) { try { return localStorage.getItem(k); } catch(e) { return null; } },
+    setItem(k, v) { try { localStorage.setItem(k, v); } catch(e) {} },
+    removeItem(k) { try { localStorage.removeItem(k); } catch(e) {} }
+  };
 
   // State
   let currentCategory = 'all';
   let searchQuery = '';
   let activeQuickFilter = null;
   let sortBy = 'popular';
-  let favorites = JSON.parse(localStorage.getItem('neon_favs') || '[]');
-  let recentGames = JSON.parse(localStorage.getItem('neon_recent') || '[]');
-  let soundEnabled = localStorage.getItem('neon_sound') !== 'false';
+
+  let favorites = [];
+  try { favorites = JSON.parse(storage.getItem('neon_favs') || '[]'); } catch(e) { favorites = []; }
+  let recentGames = [];
+  try { recentGames = JSON.parse(storage.getItem('neon_recent') || '[]'); } catch(e) { recentGames = []; }
+  let playCounts = {};
+  try { playCounts = JSON.parse(storage.getItem('neon_arcade_plays') || '{}'); } catch(e) { playCounts = {}; }
+
+  let soundEnabled = storage.getItem('neon_sound') !== 'false';
   let activeGame = null;
+  let lastFocusedElement = null;
   let virtualGamepadInstance = null;
+  let launchTimeoutTimer = null;
+  let lastLaunchGameId = null;
+  let lastLaunchTime = 0;
+
+  // Allowed external domains for iframe security
+  const ALLOWED_EXTERNAL_ORIGINS = [
+    'https://octokatherine.github.io',
+    'https://ellisonleao.github.io'
+  ];
 
   // DOM Elements
   const gamesGrid = document.getElementById('gamesGrid');
@@ -44,15 +68,33 @@
   const modalLicense = document.getElementById('modalLicense');
   const modalInstructions = document.getElementById('modalInstructions');
 
+  // Loading & Error Elements
+  const modalLoader = document.getElementById('modalLoader');
+  const loaderTitle = document.getElementById('loaderTitle');
+  const modalError = document.getElementById('modalError');
+  const modalErrorMsg = document.getElementById('modalErrorMsg');
+  const modalRetryBtn = document.getElementById('modalRetryBtn');
+  const modalReturnBtn = document.getElementById('modalReturnBtn');
+
   // Web Audio Synth for Cyber SFX
-  const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  let audioCtx = null;
+  function getAudioContext() {
+    if (!audioCtx) {
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      if (AudioContextClass) audioCtx = new AudioContextClass();
+    }
+    return audioCtx;
+  }
+
   function playCyberSound(type = 'click') {
     if (!soundEnabled) return;
     try {
-      if (audioCtx.state === 'suspended') audioCtx.resume();
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-      const now = audioCtx.currentTime;
+      const ctx = getAudioContext();
+      if (!ctx) return;
+      if (ctx.state === 'suspended') ctx.resume();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      const now = ctx.currentTime;
 
       if (type === 'click') {
         osc.type = 'triangle';
@@ -60,7 +102,7 @@
         gain.gain.setValueAtTime(0.04, now);
         gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
         osc.connect(gain);
-        gain.connect(audioCtx.destination);
+        gain.connect(ctx.destination);
         osc.start();
         osc.stop(now + 0.05);
       } else if (type === 'open') {
@@ -70,7 +112,7 @@
         gain.gain.setValueAtTime(0.06, now);
         gain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
         osc.connect(gain);
-        gain.connect(audioCtx.destination);
+        gain.connect(ctx.destination);
         osc.start();
         osc.stop(now + 0.14);
       } else if (type === 'fav') {
@@ -80,109 +122,43 @@
         gain.gain.setValueAtTime(0.06, now);
         gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
         osc.connect(gain);
-        gain.connect(audioCtx.destination);
+        gain.connect(ctx.destination);
         osc.start();
         osc.stop(now + 0.15);
       }
     } catch (e) {}
   }
 
-  // Draw Unique Cyberpunk Canvas Art for Each Game
-  function renderCyberThumbnail(canvas, game) {
-    const ctx = canvas.getContext('2d');
-    const w = canvas.width;
-    const h = canvas.height;
+  // Floating Toast Notification
+  let toastTimer = null;
+  function showToast(message) {
+    const toast = document.getElementById('cyberToast');
+    if (!toast) return;
+    toast.textContent = message;
+    toast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => {
+      toast.classList.remove('show');
+    }, 2500);
+  }
 
-    // Background gradient
-    const grad = ctx.createLinearGradient(0, 0, w, h);
-    grad.addColorStop(0, '#0a0b16');
-    grad.addColorStop(1, '#14182b');
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, w, h);
+  // Get Play Count for a Game
+  function getGamePlays(id) {
+    return playCounts[id] || 0;
+  }
 
-    // Grid lines
-    ctx.strokeStyle = 'rgba(0, 240, 255, 0.07)';
-    ctx.lineWidth = 1;
-    for (let x = 0; x < w; x += 20) {
-      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
-    }
-    for (let y = 0; y < h; y += 20) {
-      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
-    }
-
-    // Category / Game Icon Glyph Art
-    const color = game.color || '#00f0ff';
-    ctx.shadowBlur = 14;
-    ctx.shadowColor = color;
-    ctx.strokeStyle = color;
-    ctx.fillStyle = color;
-    ctx.lineWidth = 2.5;
-
-    const cx = w / 2;
-    const cy = h / 2 - 8;
-
-    if (game.category === 'arcade') {
-      // Alien / Retro arcade craft
-      ctx.beginPath();
-      ctx.moveTo(cx, cy - 18);
-      ctx.lineTo(cx + 24, cy + 14);
-      ctx.lineTo(cx, cy + 8);
-      ctx.lineTo(cx - 24, cy + 14);
-      ctx.closePath();
-      ctx.stroke();
-      ctx.fillRect(cx - 3, cy - 2, 6, 6);
-    } else if (game.category === 'puzzle') {
-      // Interlocking neural nodes
-      ctx.strokeRect(cx - 20, cy - 14, 18, 18);
-      ctx.strokeRect(cx + 2, cy - 4, 18, 18);
-      ctx.fillRect(cx - 14, cy - 8, 6, 6);
-      ctx.fillRect(cx + 8, cy + 2, 6, 6);
-    } else if (game.category === 'action') {
-      // Lightning bolt / blade
-      ctx.beginPath();
-      ctx.moveTo(cx + 4, cy - 22);
-      ctx.lineTo(cx - 14, cy);
-      ctx.lineTo(cx + 2, cy);
-      ctx.lineTo(cx - 4, cy + 22);
-      ctx.lineTo(cx + 14, cy + 2);
-      ctx.lineTo(cx - 2, cy + 2);
-      ctx.closePath();
-      ctx.stroke();
-    } else if (game.category === 'casual') {
-      // Pulsing energy star
-      for (let i = 0; i < 4; i++) {
-        ctx.save();
-        ctx.translate(cx, cy);
-        ctx.rotate((i * Math.PI) / 4);
-        ctx.strokeRect(-12, -12, 24, 24);
-        ctx.restore();
+  // Record an actual Game Play
+  function recordGamePlay(id) {
+    try {
+      const now = Date.now();
+      if (lastLaunchGameId === id && (now - lastLaunchTime) < 3000) {
+        return; // Prevent duplicate counts on quick refresh/reopen
       }
-    } else if (game.category === 'board') {
-      // Checkered tactical matrix
-      ctx.strokeRect(cx - 18, cy - 18, 36, 36);
-      ctx.fillRect(cx - 18, cy - 18, 18, 18);
-      ctx.fillRect(cx, cy, 18, 18);
-    } else if (game.category === 'racing') {
-      // Dual speed trails & horizon
-      ctx.beginPath();
-      ctx.moveTo(cx - 28, cy + 18);
-      ctx.lineTo(cx, cy - 18);
-      ctx.lineTo(cx + 28, cy + 18);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.arc(cx, cy - 2, 10, 0, Math.PI, true);
-      ctx.stroke();
-    }
-    ctx.shadowBlur = 0;
-
-    // Game Title text at bottom of thumbnail
-    ctx.fillStyle = '#ffffff';
-    ctx.font = '900 11px "Segoe UI", sans-serif';
-    ctx.textAlign = 'center';
-    ctx.shadowBlur = 6;
-    ctx.shadowColor = '#000';
-    const shortTitle = game.title.split(':')[0].toUpperCase();
-    ctx.fillText(shortTitle, cx, h - 12);
+      lastLaunchGameId = id;
+      lastLaunchTime = now;
+      playCounts[id] = (playCounts[id] || 0) + 1;
+      storage.setItem('neon_arcade_plays', JSON.stringify(playCounts));
+    } catch (e) {}
   }
 
   // Filter & Sort Logic
@@ -214,37 +190,72 @@
     if (activeQuickFilter === 'touch') {
       list = list.filter(g => g.touchNative === true);
     } else if (activeQuickFilter === 'local') {
-      list = list.filter(g => !!g.localUrl);
+      list = list.filter(g => !g.isExternal && !!g.localUrl);
     }
 
     // Sorting
     list = [...list].sort((a, b) => {
-      if (sortBy === 'title') return a.title.localeCompare(b.title);
-      // Popular (default by plays)
-      const aPlays = typeof a.plays === 'number' ? a.plays : 0;
-      const bPlays = typeof b.plays === 'number' ? b.plays : 0;
-      return bPlays - aPlays;
+      if (sortBy === 'title') {
+        return a.title.localeCompare(b.title);
+      }
+      if (sortBy === 'added') {
+        return (b.addedAt || '').localeCompare(a.addedAt || '');
+      }
+      if (sortBy === 'favorites') {
+        const aFav = favorites.includes(a.id) ? 1 : 0;
+        const bFav = favorites.includes(b.id) ? 1 : 0;
+        if (bFav !== aFav) return bFav - aFav;
+        return a.title.localeCompare(b.title);
+      }
+      // Default: 'popular' by actual local play counts
+      const aPlays = getGamePlays(a.id);
+      const bPlays = getGamePlays(b.id);
+      if (bPlays !== aPlays) return bPlays - aPlays;
+      return a.title.localeCompare(b.title);
     });
 
     return list;
   }
 
-  // Update Dynamic Counts
+  // Update Dynamic Counts across Navigation & Header
   function updateDynamicCounts() {
-    const totalCount = (window.GAMES_CATALOG || []).length;
+    const catalog = window.GAMES_CATALOG || [];
+    const totalCount = catalog.length;
+
     const headerGameCount = document.getElementById('headerGameCount');
     if (headerGameCount) headerGameCount.textContent = totalCount;
+
     const allCoresCount = document.getElementById('allCoresCount');
     if (allCoresCount) allCoresCount.textContent = `(${totalCount})`;
-    if (searchInput) searchInput.placeholder = `Search ${totalCount} verified cyber games, tags, or genres...`;
+
+    // Category counts
+    const catMap = {};
+    catalog.forEach(g => {
+      catMap[g.category] = (catMap[g.category] || 0) + 1;
+    });
+
+    const arcadeEl = document.getElementById('arcadeCount');
+    if (arcadeEl) arcadeEl.textContent = `(${catMap['arcade'] || 0})`;
+    const puzzleEl = document.getElementById('puzzleCount');
+    if (puzzleEl) puzzleEl.textContent = `(${catMap['puzzle'] || 0})`;
+    const actionEl = document.getElementById('actionCount');
+    if (actionEl) actionEl.textContent = `(${catMap['action'] || 0})`;
+    const boardEl = document.getElementById('boardCount');
+    if (boardEl) boardEl.textContent = `(${catMap['board'] || 0})`;
+    const casualEl = document.getElementById('casualCount');
+    if (casualEl) casualEl.textContent = `(${catMap['casual'] || 0})`;
+
+    if (searchInput) {
+      searchInput.placeholder = `Search ${totalCount} verified cyber games, tags, or genres...`;
+    }
   }
 
   // Render Games Grid
   let isFirstGridMount = true;
   function renderGrid() {
     const games = getFilteredGames();
-    gamesCountEl.textContent = `${games.length} GAMES ONLINE`;
-    favCountBadge.textContent = favorites.length;
+    if (gamesCountEl) gamesCountEl.textContent = `${games.length} GAMES ONLINE`;
+    if (favCountBadge) favCountBadge.textContent = favorites.length;
 
     if (games.length === 0) {
       gamesGrid.innerHTML = `
@@ -260,8 +271,11 @@
     const fragment = document.createDocumentFragment();
 
     games.forEach((game, index) => {
-      const card = document.createElement('div');
+      const card = document.createElement('article');
       card.className = 'game-card';
+      card.setAttribute('tabindex', '0');
+      card.setAttribute('role', 'button');
+      card.setAttribute('aria-label', `Play ${game.title}`);
       if (isFirstGridMount) {
         card.classList.add('card-mount-anim');
         const staggerIdx = Math.min(index, 12);
@@ -270,48 +284,48 @@
       card.dataset.id = game.id;
 
       const isFav = favorites.includes(game.id);
-      const hasRealThumb = !!(game.thumbnail && game.thumbnailStatus === 'present');
-      const thumbMarkup = hasRealThumb
-        ? `<img src="${game.thumbnail}" loading="lazy" class="game-thumb-img" alt="${game.title}" onload="this.classList.add('loaded')">`
-        : `<canvas class="game-thumb-canvas" width="220" height="138"></canvas>`;
+      const thumbSrc = game.thumbnail || '/assets/thumbs/fallback.svg';
+      const plays = getGamePlays(game.id);
 
       card.innerHTML = `
         <div class="game-thumb-wrapper">
-          ${thumbMarkup}
+          <img src="${thumbSrc}" loading="lazy" class="game-thumb-img" alt="${game.title}"
+               onerror="this.onerror=null; this.src='/assets/thumbs/fallback.svg';"
+               onload="this.classList.add('loaded')">
           <div class="card-badges">
             <span class="badge-tag badge-${game.category}">${game.category}</span>
             <span class="badge-tag" style="color: #fcee0a; border-color: #fcee0a;">${game.license}</span>
           </div>
           <div class="badge-touch">${game.touchNative ? '👆 Touch' : '🎮 D-Pad'}</div>
-          <button class="card-fav-btn ${isFav ? 'is-fav' : ''}" data-id="${game.id}" title="Toggle Favorite">
+          <button class="card-fav-btn ${isFav ? 'is-fav' : ''}" data-id="${game.id}" title="Toggle Favorite" aria-label="Favorite ${game.title}" type="button">
             ${isFav ? '★' : '☆'}
           </button>
         </div>
         <div class="game-info">
           <div class="game-title" title="${game.title}">${game.title}</div>
           <div class="game-meta">
-            <span class="plays-val">⚡ ${game.plays} plays</span>
+            <span class="plays-val">⚡ ${plays} plays</span>
           </div>
         </div>
       `;
 
-      if (hasRealThumb) {
-        const imgEl = card.querySelector('.game-thumb-img');
-        if (imgEl && imgEl.complete) {
-          imgEl.classList.add('loaded');
-        }
+      const imgEl = card.querySelector('.game-thumb-img');
+      if (imgEl && imgEl.complete) {
+        imgEl.classList.add('loaded');
       }
 
-      // Render canvas thumbnail only if real thumbnail is missing
-      if (!hasRealThumb) {
-        const canvasEl = card.querySelector('.game-thumb-canvas');
-        if (canvasEl) renderCyberThumbnail(canvasEl, game);
-      }
-
-      // Card click opens game
+      // Card click / Enter / Space opens game
       card.addEventListener('click', (e) => {
         if (e.target.closest('.card-fav-btn')) return;
         launchGame(game);
+      });
+
+      card.addEventListener('keydown', (e) => {
+        if (e.target.closest('.card-fav-btn')) return;
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          launchGame(game);
+        }
       });
 
       // Fav button click
@@ -335,29 +349,98 @@
     } else {
       favorites.push(id);
     }
-    localStorage.setItem('neon_favs', JSON.stringify(favorites));
+    try {
+      storage.setItem('neon_favs', JSON.stringify(favorites));
+    } catch (e) {}
     playCyberSound('fav');
     renderGrid();
   }
 
   // Launch Game in Modal Player
-  function launchGame(game) {
+  function launchGame(game, updateHistory = true) {
+    if (!game) return;
     activeGame = game;
+    lastFocusedElement = document.activeElement;
     playCyberSound('open');
 
-    // Add to recent
-    recentGames = [game.id, ...recentGames.filter(x => x !== game.id)].slice(0, 30);
-    localStorage.setItem('neon_recent', JSON.stringify(recentGames));
+    // Record real launch play count
+    recordGamePlay(game.id);
 
+    // Add to recent
+    try {
+      recentGames = [game.id, ...recentGames.filter(x => x !== game.id)].slice(0, 30);
+      storage.setItem('neon_recent', JSON.stringify(recentGames));
+    } catch (e) {}
+
+    // Update URL routing
+    if (updateHistory) {
+      try {
+        history.pushState({ gameId: game.id }, `${game.title} - Neon Arcade`, `/game/${game.id}`);
+      } catch (e) {
+        // Fallback for sandboxed frames or hash routing
+        window.location.hash = `game=${game.id}`;
+      }
+    }
+    document.title = `${game.title} // NEON ARCADE`;
+
+    // Populate modal metadata
     modalGameTitle.textContent = game.title;
     modalGameMeta.textContent = `${game.category.toUpperCase()} // ${game.license} LICENSE // BY ${game.author.toUpperCase()}`;
     modalInstructions.textContent = game.instructions;
     modalSourceLink.href = game.sourceUrl;
     modalLicense.textContent = `${game.license} Open Source`;
 
-    // Target playable URL (prioritize localUrl, fallback to embedUrl)
-    const playUrl = game.localUrl || game.embedUrl || `/games/snake/index.html`;
+    // Security check and sandbox configuration
+    let playUrl;
+    if (game.isExternal) {
+      // Validate external URL origin
+      const isValidOrigin = ALLOWED_EXTERNAL_ORIGINS.some(allowed => game.embedUrl && game.embedUrl.startsWith(allowed));
+      if (!isValidOrigin) {
+        showLaunchError('Security violation: External game origin is not whitelisted.');
+        return;
+      }
+      playUrl = game.embedUrl;
+      // Stricter sandbox for external untrusted embeds: NO allow-same-origin!
+      modalIframe.setAttribute('sandbox', 'allow-scripts');
+    } else {
+      playUrl = game.localUrl || `/games/snake/index.html`;
+      // Safe sandbox for local first-party games
+      modalIframe.setAttribute('sandbox', 'allow-scripts allow-same-origin');
+    }
+
+    // Check offline capability
+    if (!navigator.onLine && game.isExternal) {
+      showLaunchError('OFFLINE MODE: This external core requires an active internet connection.');
+      return;
+    }
+
+    // Show loading state
+    showLoadingState(game.title);
+
+    // Reset iframe opacity while loading
+    modalIframe.style.opacity = '0';
     modalIframe.src = playUrl;
+
+    // Launch timeout handler (8 seconds)
+    clearTimeout(launchTimeoutTimer);
+    launchTimeoutTimer = setTimeout(() => {
+      if (modalLoader && !modalLoader.classList.contains('hidden')) {
+        showLaunchError('Game launch timed out. Connection compromised or core unresponsive.');
+      }
+    }, 8000);
+
+    // Iframe load listener
+    modalIframe.onload = () => {
+      clearTimeout(launchTimeoutTimer);
+      hideLoadingState();
+      modalIframe.style.opacity = '1';
+      focusIframe();
+    };
+
+    modalIframe.onerror = () => {
+      clearTimeout(launchTimeoutTimer);
+      showLaunchError('Failed to load game assets.');
+    };
 
     // Check favorite status for modal
     const isFav = favorites.includes(game.id);
@@ -369,7 +452,7 @@
     }
     virtualGamepadInstance.setIframeTarget(modalIframe);
 
-    // If mobile or needsTouchOverlay, show gamepad
+    // Show gamepad if needed
     if (window.innerWidth <= 768 && game.needsTouchOverlay) {
       virtualGamepadInstance.show();
       modalGamepadBtn.classList.add('active');
@@ -380,19 +463,15 @@
 
     // Reset modal scroll position to top
     gameModal.scrollTop = 0;
-
     gameModal.classList.add('active');
+    document.body.classList.add('modal-open');
     document.body.style.overflow = 'hidden';
 
-    // Focus iframe immediately upon load so keyboard works without first click
-    modalIframe.onload = () => {
-      try {
-        modalIframe.focus();
-        modalIframe.contentWindow?.focus();
-      } catch (e) {
-        // Cross-origin embed restrictions
-      }
-    };
+    // Move focus into player
+    focusIframe();
+  }
+
+  function focusIframe() {
     try {
       modalIframe.focus();
       modalIframe.contentWindow?.focus();
@@ -402,33 +481,79 @@
         modalIframe.focus();
         modalIframe.contentWindow?.focus();
       } catch (e) {}
-    }, 120);
+    }, 150);
+  }
+
+  function showLoadingState(title) {
+    if (modalLoader) {
+      modalLoader.classList.remove('hidden');
+      if (loaderTitle) loaderTitle.textContent = `INITIALIZING ${title.toUpperCase()}...`;
+    }
+    if (modalError) modalError.classList.add('hidden');
+  }
+
+  function hideLoadingState() {
+    if (modalLoader) modalLoader.classList.add('hidden');
+  }
+
+  function showLaunchError(message) {
+    hideLoadingState();
+    if (modalError) {
+      modalError.classList.remove('hidden');
+      if (modalErrorMsg) modalErrorMsg.textContent = message;
+    }
   }
 
   // Update Favorite button in Player Modal
   function updateModalFavButton(isFav) {
-    const iconEl = modalFavBtn.querySelector('.btn-icon');
+    if (!modalFavBtn) return;
     const textEl = modalFavBtn.querySelector('.btn-text');
-    if (iconEl && textEl) {
-      iconEl.textContent = isFav ? '★' : '☆';
-      textEl.textContent = isFav ? 'FAVORITED' : 'FAVORITE';
-    } else {
-      modalFavBtn.innerHTML = `<span class="btn-icon">${isFav ? '★' : '☆'}</span><span class="btn-text">${isFav ? 'FAVORITED' : 'FAVORITE'}</span>`;
-    }
+    if (textEl) textEl.textContent = isFav ? 'FAVORITED' : 'FAVORITE';
     modalFavBtn.classList.toggle('active', isFav);
     modalFavBtn.title = isFav ? 'Favorited' : 'Favorite Game';
   }
 
   // Close Game Player Modal
-  function closeGame() {
+  function closeGame(updateHistory = true) {
+    clearTimeout(launchTimeoutTimer);
     gameModal.classList.remove('active');
-    modalIframe.src = 'about:blank';
-    activeGame = null;
+    document.body.classList.remove('modal-open');
     document.body.style.overflow = '';
+    modalIframe.src = 'about:blank';
+    hideLoadingState();
+    if (modalError) modalError.classList.add('hidden');
+    activeGame = null;
     playCyberSound('click');
+
+    // Restore page title and URL
+    document.title = 'NEON ARCADE // Cyberpunk Web Gaming Portal';
+    if (updateHistory) {
+      try {
+        history.pushState({}, 'Neon Arcade', '/');
+      } catch (e) {
+        window.location.hash = '';
+      }
+    }
+
+    // Restore focus to triggering card
+    if (lastFocusedElement && typeof lastFocusedElement.focus === 'function') {
+      lastFocusedElement.focus();
+    }
   }
 
-  // Event Listeners
+  // Retry Launch Button
+  modalRetryBtn?.addEventListener('click', () => {
+    if (activeGame) {
+      launchGame(activeGame, false);
+    }
+  });
+
+  // Return to Arcade Button
+  modalReturnBtn?.addEventListener('click', () => {
+    closeGame();
+  });
+
+  // Event Listeners for Categories
   categoryPills.forEach(pill => {
     pill.addEventListener('click', () => {
       categoryPills.forEach(p => p.classList.remove('active'));
@@ -482,27 +607,14 @@
   // Sound Toggle Button
   soundToggleBtn.addEventListener('click', () => {
     soundEnabled = !soundEnabled;
-    localStorage.setItem('neon_sound', soundEnabled);
+    storage.setItem('neon_sound', soundEnabled);
     soundToggleBtn.textContent = soundEnabled ? '🔊' : '🔇';
     playCyberSound('click');
   });
   soundToggleBtn.textContent = soundEnabled ? '🔊' : '🔇';
 
-  // Floating Toast Notification
-  let toastTimer = null;
-  function showToast(message) {
-    const toast = document.getElementById('cyberToast');
-    if (!toast) return;
-    toast.textContent = message;
-    toast.classList.add('show');
-    clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => {
-      toast.classList.remove('show');
-    }, 2500);
-  }
-
   // Game Player Modal Actions
-  modalBackBtn.addEventListener('click', closeGame);
+  modalBackBtn.addEventListener('click', () => closeGame(true));
 
   modalGamepadBtn.addEventListener('click', () => {
     if (virtualGamepadInstance) {
@@ -519,7 +631,7 @@
     }
   });
 
-  // Fullscreen button with vendor prefixes and refusal toast
+  // Fullscreen button
   modalFullscreenBtn.addEventListener('click', () => {
     const isFs = !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
     if (!isFs) {
@@ -528,27 +640,23 @@
         try {
           const promise = req.call(gameModal);
           if (promise && promise.catch) {
-            promise.catch(() => {
-              showToast('Fullscreen is not available here');
-            });
+            promise.catch(() => showToast('Fullscreen unavailable in this context'));
           }
         } catch (e) {
-          showToast('Fullscreen is not available here');
+          showToast('Fullscreen unavailable in this context');
         }
       } else {
-        showToast('Fullscreen is not available here');
+        showToast('Fullscreen unavailable in this context');
       }
     } else {
       const exit = document.exitFullscreen || document.webkitExitFullscreen || document.mozCancelFullScreen || document.msExitFullscreen;
       if (exit) {
-        try {
-          exit.call(document);
-        } catch (e) {}
+        try { exit.call(document); } catch (e) {}
       }
     }
   });
 
-  // Track fullscreen state change
+  // Fullscreen state change
   ['fullscreenchange', 'webkitfullscreenchange', 'mozfullscreenchange', 'MSFullscreenChange'].forEach(evt => {
     document.addEventListener(evt, () => {
       const isFs = !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
@@ -556,10 +664,10 @@
     });
   });
 
-  // Share button with Web Share API and Clipboard fallback
+  // Share button with exact Game URL
   modalShareBtn.addEventListener('click', async () => {
     if (!activeGame) return;
-    const shareUrl = window.location.href;
+    const shareUrl = `${window.location.origin}/game/${activeGame.id}`;
     const shareData = {
       title: `${activeGame.title} - Neon Arcade`,
       text: `Play ${activeGame.title} on Neon Arcade!`,
@@ -569,7 +677,7 @@
     if (navigator.share) {
       try {
         await navigator.share(shareData);
-        showToast('Link shared');
+        showToast('Direct game link shared');
         return;
       } catch (err) {
         if (err.name === 'AbortError') return;
@@ -587,9 +695,9 @@
         document.execCommand('copy');
         document.body.removeChild(tempInput);
       }
-      showToast('Link copied');
+      showToast('Game link copied to clipboard');
     } catch (e) {
-      showToast('Link copied');
+      showToast('Game link copied');
     }
   });
 
@@ -617,12 +725,53 @@
     });
   });
 
-  // ESC to close modal
+  // Keyboard navigation & ESC to close modal
   window.addEventListener('keydown', e => {
     if (e.key === 'Escape' && gameModal.classList.contains('active')) {
-      closeGame();
+      closeGame(true);
     }
   });
+
+  // Handle Browser Back / Forward History Navigation
+  window.addEventListener('popstate', (e) => {
+    const path = window.location.pathname;
+    const match = path.match(/^\/game\/([a-z0-9-]+)\/?$/i);
+    const hashMatch = window.location.hash.match(/^#game=([a-z0-9-]+)/i);
+    const gameId = (match && match[1]) || (hashMatch && hashMatch[1]);
+
+    if (gameId) {
+      const game = (window.GAMES_CATALOG || []).find(g => g.id === gameId);
+      if (game) {
+        launchGame(game, false);
+      } else {
+        closeGame(false);
+      }
+    } else {
+      if (gameModal.classList.contains('active')) {
+        closeGame(false);
+      }
+    }
+  });
+
+  // Initial Route Check (Launch game if URL points to /game/:id or #game=id)
+  function handleInitialRoute() {
+    const path = window.location.pathname;
+    const match = path.match(/^\/game\/([a-z0-9-]+)\/?$/i);
+    const hashMatch = window.location.hash.match(/^#game=([a-z0-9-]+)/i);
+    const params = new URLSearchParams(window.location.search);
+    const queryGameId = params.get('game');
+    const targetGameId = (match && match[1]) || (hashMatch && hashMatch[1]) || queryGameId;
+
+    if (targetGameId) {
+      const game = (window.GAMES_CATALOG || []).find(g => g.id === targetGameId);
+      if (game) {
+        launchGame(game, false);
+      } else {
+        showToast(`CORE NOT FOUND // Game '${targetGameId}' does not exist.`);
+        try { history.replaceState({}, '', '/'); } catch(e) {}
+      }
+    }
+  }
 
   // PWA Service Worker Registration
   if ('serviceWorker' in navigator) {
@@ -656,7 +805,8 @@
     });
   }
 
-  // Initialize Dynamic Counts & Initial Grid
+  // Initialize
   updateDynamicCounts();
   renderGrid();
+  handleInitialRoute();
 })();

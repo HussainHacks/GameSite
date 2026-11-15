@@ -1,10 +1,14 @@
 {
   "name": "cyberpunk-gamesite",
   "version": "1.0.0",
-  "description": "Cyberpunk-themed mobile-first web gaming portal featuring 100+ open source games",
+  "description": "Neon Arcade — Cyberpunk-themed mobile-first web gaming portal featuring 16 verified open source games",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
+    "test": "node scripts/validate-catalog.mjs",
+    "test:security": "node scripts/test-server-security.mjs",
+    "test:browser": "node scripts/test-browser-integration.mjs",
+    "test:all": "node scripts/validate-catalog.mjs && node scripts/test-server-security.mjs && node scripts/test-browser-integration.mjs",
     "deploy": "npx netlify deploy --prod --dir=public"
   },
   "keywords": [

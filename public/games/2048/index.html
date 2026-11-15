@@ -181,7 +181,11 @@
       [0, 0, 0, 0]
     ];
     let score = 0;
-    let highScore = localStorage.getItem('cyber_2048_hi') || 0;
+    const safeStorage = window.safeStorage || {
+      getItem(k) { try { return localStorage.getItem(k); } catch(e) { return null; } },
+      setItem(k, v) { try { localStorage.setItem(k, v); } catch(e) {} }
+    };
+    let highScore = safeStorage.getItem('cyber_2048_hi') || 0;
     document.getElementById('highScore').textContent = highScore;
 
     const gridEl = document.getElementById('grid');
@@ -249,7 +253,7 @@
       scoreEl.textContent = score;
       if (score > highScore) {
         highScore = score;
-        localStorage.setItem('cyber_2048_hi', highScore);
+        safeStorage.setItem('cyber_2048_hi', highScore);
         document.getElementById('highScore').textContent = highScore;
       }
     }
@@ -374,19 +378,23 @@
     let touchX = 0;
     let touchY = 0;
     window.addEventListener('touchstart', e => {
-      touchX = e.changedTouches[0].screenX;
-      touchY = e.changedTouches[0].screenY;
+      const t = e.changedTouches ? e.changedTouches[0] : e;
+      touchX = t.clientX !== undefined ? t.clientX : t.screenX;
+      touchY = t.clientY !== undefined ? t.clientY : t.screenY;
     }, {passive: true});
 
     window.addEventListener('touchend', e => {
-      const dx = e.changedTouches[0].screenX - touchX;
-      const dy = e.changedTouches[0].screenY - touchY;
+      const t = e.changedTouches ? e.changedTouches[0] : e;
+      const curX = t.clientX !== undefined ? t.clientX : t.screenX;
+      const curY = t.clientY !== undefined ? t.clientY : t.screenY;
+      const dx = curX - touchX;
+      const dy = curY - touchY;
       if (Math.abs(dx) > Math.abs(dy)) {
-        if (dx > 30) moveRight();
-        else if (dx < -30) moveLeft();
+        if (dx > 25) moveRight();
+        else if (dx < -25) moveLeft();
       } else {
-        if (dy > 30) moveDown();
-        else if (dy < -30) moveUp();
+        if (dy > 25) moveDown();
+        else if (dy < -25) moveUp();
       }
     }, {passive: true});
 

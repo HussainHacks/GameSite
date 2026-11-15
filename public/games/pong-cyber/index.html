@@ -311,6 +311,18 @@
       movePaddle(e.clientX);
     });
 
+    // Keyboard & Virtual Gamepad Controls
+    window.addEventListener('keydown', e => {
+      const step = 28;
+      if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') {
+        playerPaddle.x = Math.max(0, playerPaddle.x - step);
+      } else if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') {
+        playerPaddle.x = Math.min(canvas.width - playerPaddle.w, playerPaddle.x + step);
+      } else if (e.key === ' ' || e.key === 'Enter') {
+        if (!isPlaying) startGame();
+      }
+    });
+
     startBtn.addEventListener('click', startGame);
     draw();
   </script>

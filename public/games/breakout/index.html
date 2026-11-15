@@ -347,6 +347,18 @@
       movePaddle(e.clientX);
     });
 
+    // Keyboard & Virtual Gamepad Arrow Controls
+    window.addEventListener('keydown', e => {
+      const step = 28;
+      if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') {
+        paddle.x = Math.max(0, paddle.x - step);
+      } else if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') {
+        paddle.x = Math.min(canvas.width - paddle.w, paddle.x + step);
+      } else if (e.key === ' ' || e.key === 'Enter') {
+        if (!isPlaying) startGame();
+      }
+    });
+
     startBtn.addEventListener('click', startGame);
     createBricks();
     draw();

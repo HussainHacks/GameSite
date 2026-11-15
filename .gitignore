@@ -11,3 +11,5 @@ plays.json
 *.key
 mcp_config.json
 .gemini/
+.tmp_chrome_qa/
+scratch/

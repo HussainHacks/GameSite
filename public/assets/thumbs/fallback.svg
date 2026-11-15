@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 375" width="600" height="375">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0a0a14"/>
+      <stop offset="50%" stop-color="#120c24"/>
+      <stop offset="100%" stop-color="#05050d"/>
+    </linearGradient>
+    <linearGradient id="gridGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#00f0ff" stop-opacity="0.2"/>
+      <stop offset="100%" stop-color="#ff007f" stop-opacity="0.05"/>
+    </linearGradient>
+    <linearGradient id="glowGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#00f0ff"/>
+      <stop offset="50%" stop-color="#fcee0a"/>
+      <stop offset="100%" stop-color="#ff007f"/>
+    </linearGradient>
+  </defs>
+  <rect width="600" height="375" fill="url(#bg)"/>
+  <!-- Cyber Grid -->
+  <g stroke="url(#gridGrad)" stroke-width="1">
+    <line x1="0" y1="75" x2="600" y2="75"/>
+    <line x1="0" y1="150" x2="600" y2="150"/>
+    <line x1="0" y1="225" x2="600" y2="225"/>
+    <line x1="0" y1="300" x2="600" y2="300"/>
+    <line x1="100" y1="0" x2="100" y2="375"/>
+    <line x1="200" y1="0" x2="200" y2="375"/>
+    <line x1="300" y1="0" x2="300" y2="375"/>
+    <line x1="400" y1="0" x2="400" y2="375"/>
+    <line x1="500" y1="0" x2="500" y2="375"/>
+  </g>
+  <!-- Cyber glyph / Gamepad icon -->
+  <g transform="translate(300, 160)" text-anchor="middle">
+    <polygon points="-50,-35 50,-35 70,0 50,35 -50,35 -70,0" fill="none" stroke="#00f0ff" stroke-width="3" filter="drop-shadow(0 0 8px #00f0ff)"/>
+    <text x="0" y="8" fill="#00f0ff" font-family="'Courier New', monospace" font-size="28" font-weight="bold" letter-spacing="4">NEON</text>
+  </g>
+  <!-- Subtitle -->
+  <text x="300" y="240" text-anchor="middle" fill="#fcee0a" font-family="'Courier New', monospace" font-size="14" letter-spacing="6" font-weight="bold">// ARCADE CORE //</text>
+  <!-- Corner accents -->
+  <path d="M 20 50 L 20 20 L 50 20" stroke="#00f0ff" stroke-width="2" fill="none"/>
+  <path d="M 580 50 L 580 20 L 550 20" stroke="#ff007f" stroke-width="2" fill="none"/>
+  <path d="M 20 325 L 20 355 L 50 355" stroke="#00ff66" stroke-width="2" fill="none"/>
+  <path d="M 580 325 L 580 355 L 550 355" stroke="#fcee0a" stroke-width="2" fill="none"/>
+</svg>

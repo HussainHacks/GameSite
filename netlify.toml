@@ -4,6 +4,17 @@
   # The directory containing the static website assets
   publish = "public"
 
+# SPA routing: route /game/:id to /index.html
+[[redirects]]
+  from = "/game/*"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/game"
+  to = "/index.html"
+  status = 200
+
 # Header rules for PWA, audio, and game iframe sandboxing
 [[headers]]
   for = "/*"
@@ -11,6 +22,7 @@
     X-Frame-Options = "SAMEORIGIN"
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "geolocation=(), camera=(), microphone=()"
 
 # Cache control for static assets (fast delivery)
 [[headers]]
@@ -28,12 +40,17 @@
   [headers.values]
     Cache-Control = "public, max-age=86400"
 
+# Game data catalog should always revalidate
+[[headers]]
+  for = "/data/*"
+  [headers.values]
+    Cache-Control = "no-cache, must-revalidate"
+
 # Service worker and manifest should always be fresh
 [[headers]]
   for = "/sw.js"
   [headers.values]
     Cache-Control = "no-cache, no-store, must-revalidate"
-
 
 [[headers]]
   for = "/manifest.json"

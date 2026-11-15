@@ -144,7 +144,11 @@
 
     let isPlaying = false;
     let distance = 0;
-    let highDistance = localStorage.getItem('cyber_runner_hi') || 0;
+    const safeStorage = window.safeStorage || {
+      getItem(k) { try { return localStorage.getItem(k); } catch(e) { return null; } },
+      setItem(k, v) { try { localStorage.setItem(k, v); } catch(e) {} }
+    };
+    let highDistance = safeStorage.getItem('cyber_runner_hi') || 0;
     let gameSpeed = 5.5;
 
     const GROUND_Y = 270;
@@ -388,7 +392,7 @@
 
       if (distance > highDistance) {
         highDistance = distance;
-        localStorage.setItem('cyber_runner_hi', highDistance);
+        safeStorage.setItem('cyber_runner_hi', highDistance);
       }
       overlayTitle.textContent = "SIGNAL TERMINATED";
       overlayScore.textContent = `DISTANCE: ${distance}m // BEST: ${highDistance}m`;

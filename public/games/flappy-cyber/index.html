@@ -110,7 +110,11 @@
 
     let isPlaying = false;
     let score = 0;
-    let highScore = localStorage.getItem('flappy_cyber_hi') || 0;
+    const safeStorage = window.safeStorage || {
+      getItem(k) { try { return localStorage.getItem(k); } catch(e) { return null; } },
+      setItem(k, v) { try { localStorage.setItem(k, v); } catch(e) {} }
+    };
+    let highScore = safeStorage.getItem('flappy_cyber_hi') || 0;
 
     let drone = { x: 70, y: 250, r: 12, vy: 0, gravity: 0.35, jump: -6.5 };
     let pipes = [];
@@ -280,7 +284,7 @@
 
       if (score > highScore) {
         highScore = score;
-        localStorage.setItem('flappy_cyber_hi', highScore);
+        safeStorage.setItem('flappy_cyber_hi', highScore);
       }
       overlayTitle.textContent = "SIGNAL SEVERED";
       overlayScore.textContent = `SCORE: ${score} // BEST: ${highScore}`;

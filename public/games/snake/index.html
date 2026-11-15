@@ -173,7 +173,11 @@
     let nextVelocity = {x: 1, y: 0};
     let food = {x: 15, y: 10, pulse: 0};
     let score = 0;
-    let highScore = localStorage.getItem('neon_snake_hi') || 0;
+    const safeStorage = window.safeStorage || {
+      getItem(k) { try { return localStorage.getItem(k); } catch(e) { return null; } },
+      setItem(k, v) { try { localStorage.setItem(k, v); } catch(e) {} }
+    };
+    let highScore = safeStorage.getItem('neon_snake_hi') || 0;
     highScoreEl.textContent = highScore;
     let gameLoop = null;
     let isPlaying = false;
@@ -244,7 +248,7 @@
 
       if (score > highScore) {
         highScore = score;
-        localStorage.setItem('neon_snake_hi', highScore);
+        safeStorage.setItem('neon_snake_hi', highScore);
         highScoreEl.textContent = highScore;
       }
       overlayTitle.textContent = "SIGNAL LOST";

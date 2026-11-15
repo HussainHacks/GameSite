@@ -471,6 +471,11 @@
 
     <script>
       document.addEventListener('DOMContentLoaded', () => {
+        const safeStorage = window.safeStorage || {
+          getItem(k) { try { return localStorage.getItem(k); } catch(e) { return null; } },
+          setItem(k, v) { try { localStorage.setItem(k, v); } catch(e) {} },
+          removeItem(k) { try { localStorage.removeItem(k); } catch(e) {} }
+        };
         // --- DOM Elements ---
         const scoreDisplayEl = document.getElementById('score-display');
         const highScoreDisplayEl = document.getElementById('high-score-display');
@@ -569,7 +574,7 @@
         }
 
         function startGame() {
-          localStorage.removeItem('solitaireGameState');
+          safeStorage.removeItem('solitaireGameState');
           stock = [];
           waste = [];
           foundations = [[], [], [], []];
@@ -594,7 +599,7 @@
 
         function restartGame() {
           if (!initialGameState.stock || !initialGameState.tableau) return;
-          localStorage.removeItem('solitaireGameState');
+          safeStorage.removeItem('solitaireGameState');
           stock = JSON.parse(JSON.stringify(initialGameState.stock));
           tableau = JSON.parse(JSON.stringify(initialGameState.tableau));
           waste = [];
@@ -695,11 +700,11 @@
         }
 
         function getHighScore() {
-          return parseInt(localStorage.getItem('solitaireHighScore') || '0');
+          return parseInt(safeStorage.getItem('solitaireHighScore') || '0');
         }
 
         function setHighScore(newHighScore) {
-          localStorage.setItem('solitaireHighScore', newHighScore);
+          safeStorage.setItem('solitaireHighScore', newHighScore);
         }
 
         function saveStateForUndo() {
@@ -776,7 +781,7 @@
         function checkWinCondition() {
           const totalCardsInFoundations = foundations.reduce((sum, pile) => sum + pile.length, 0);
           if (totalCardsInFoundations === 52) {
-            localStorage.removeItem('solitaireGameState');
+            safeStorage.removeItem('solitaireGameState');
             setTimeout(() => (winModal.style.display = 'flex'), 500);
           }
         }
@@ -791,11 +796,11 @@
             score: score,
             hasSavedGame: true,
           };
-          localStorage.setItem('solitaireGameState', JSON.stringify(gameState));
+          safeStorage.setItem('solitaireGameState', JSON.stringify(gameState));
         }
 
         function loadGameState() {
-          const savedState = localStorage.getItem('solitaireGameState');
+          const savedState = safeStorage.getItem('solitaireGameState');
           if (savedState) {
             try {
               const gameState = JSON.parse(savedState);
