@@ -369,6 +369,26 @@
 
     gameModal.classList.add('active');
     document.body.style.overflow = 'hidden';
+
+    // Focus iframe immediately upon load so keyboard works without first click
+    modalIframe.onload = () => {
+      try {
+        modalIframe.focus();
+        modalIframe.contentWindow?.focus();
+      } catch (e) {
+        // Cross-origin embed restrictions
+      }
+    };
+    try {
+      modalIframe.focus();
+      modalIframe.contentWindow?.focus();
+    } catch (e) {}
+    setTimeout(() => {
+      try {
+        modalIframe.focus();
+        modalIframe.contentWindow?.focus();
+      } catch (e) {}
+    }, 120);
   }
 
   // Update Favorite button in Player Modal
@@ -454,6 +474,19 @@
   });
   soundToggleBtn.textContent = soundEnabled ? '🔊' : '🔇';
 
+  // Floating Toast Notification
+  let toastTimer = null;
+  function showToast(message) {
+    const toast = document.getElementById('cyberToast');
+    if (!toast) return;
+    toast.textContent = message;
+    toast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => {
+      toast.classList.remove('show');
+    }, 2500);
+  }
+
   // Game Player Modal Actions
   modalBackBtn.addEventListener('click', closeGame);
 
@@ -472,26 +505,77 @@
     }
   });
 
+  // Fullscreen button with vendor prefixes and refusal toast
   modalFullscreenBtn.addEventListener('click', () => {
-    if (!document.fullscreenElement) {
-      gameModal.requestFullscreen?.() || gameModal.webkitRequestFullscreen?.();
+    const isFs = !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
+    if (!isFs) {
+      const req = gameModal.requestFullscreen || gameModal.webkitRequestFullscreen || gameModal.mozRequestFullScreen || gameModal.msRequestFullscreen;
+      if (req) {
+        try {
+          const promise = req.call(gameModal);
+          if (promise && promise.catch) {
+            promise.catch(() => {
+              showToast('Fullscreen is not available here');
+            });
+          }
+        } catch (e) {
+          showToast('Fullscreen is not available here');
+        }
+      } else {
+        showToast('Fullscreen is not available here');
+      }
     } else {
-      document.exitFullscreen?.() || document.webkitExitFullscreen?.();
+      const exit = document.exitFullscreen || document.webkitExitFullscreen || document.mozCancelFullScreen || document.msExitFullscreen;
+      if (exit) {
+        try {
+          exit.call(document);
+        } catch (e) {}
+      }
     }
   });
 
-  modalShareBtn.addEventListener('click', () => {
+  // Track fullscreen state change
+  ['fullscreenchange', 'webkitfullscreenchange', 'mozfullscreenchange', 'MSFullscreenChange'].forEach(evt => {
+    document.addEventListener(evt, () => {
+      const isFs = !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
+      modalFullscreenBtn.classList.toggle('active', isFs);
+    });
+  });
+
+  // Share button with Web Share API and Clipboard fallback
+  modalShareBtn.addEventListener('click', async () => {
     if (!activeGame) return;
+    const shareUrl = window.location.href;
     const shareData = {
-      title: activeGame.title,
+      title: `${activeGame.title} - Neon Arcade`,
       text: `Play ${activeGame.title} on Neon Arcade!`,
-      url: window.location.href
+      url: shareUrl
     };
+
     if (navigator.share) {
-      navigator.share(shareData).catch(() => {});
-    } else {
-      navigator.clipboard?.writeText(window.location.href);
-      alert('Game link copied to clipboard!');
+      try {
+        await navigator.share(shareData);
+        showToast('Link shared');
+        return;
+      } catch (err) {
+        if (err.name === 'AbortError') return;
+      }
+    }
+
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(shareUrl);
+      } else {
+        const tempInput = document.createElement('input');
+        tempInput.value = shareUrl;
+        document.body.appendChild(tempInput);
+        tempInput.select();
+        document.execCommand('copy');
+        document.body.removeChild(tempInput);
+      }
+      showToast('Link copied');
+    } catch (e) {
+      showToast('Link copied');
     }
   });
 

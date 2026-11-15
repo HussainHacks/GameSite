@@ -13,8 +13,8 @@
   <link rel="icon" type="image/svg+xml" href="/assets/icons/icon-192.svg">
   <link rel="apple-touch-icon" href="/assets/icons/icon-192.svg">
 
-  <link rel="stylesheet" href="/css/cyberpunk.css?v=2">
-  <link rel="stylesheet" href="/css/gamepad.css?v=2">
+  <link rel="stylesheet" href="/css/cyberpunk.css?v=3">
+  <link rel="stylesheet" href="/css/gamepad.css?v=3">
 </head>
 <body>
 
@@ -85,7 +85,8 @@
 
   <!-- Live Status & Counter Banner -->
   <div class="stats-banner">
-    <div>MATRIX STATUS: <span style="color: #00f0ff;">CONNECTED</span></div>
+    <div class="stat-status">MATRIX STATUS: <span style="color: #00f0ff;">CONNECTED</span></div>
+    <span class="stat-divider">//</span>
     <div class="games-counter" id="gamesCount">0 GAMES ONLINE</div>
   </div>
 
@@ -136,6 +137,9 @@
       </div>
     </div>
 
+    <!-- Keyboard Focus Hint Line -->
+    <div class="focus-hint" id="focusHint">Click the game if the keys do not respond</div>
+
     <footer class="modal-footer">
       <div id="modalInstructions" style="color: #00ffcc; font-weight: 700;">Swipe or use controls to play</div>
       <div class="modal-license-info">
@@ -146,6 +150,9 @@
       </div>
     </footer>
   </div>
+
+  <!-- Floating Cyberpunk Notification Toast -->
+  <div class="cyber-toast" id="cyberToast" role="status" aria-live="polite"></div>
 
   <!-- Mobile Bottom Sticky Navigation -->
   <nav class="mobile-bottom-nav">
@@ -164,8 +171,8 @@
   </nav>
 
   <!-- Scripts -->
-  <script src="/js/games-data.js?v=2"></script>
-  <script src="/js/gamepad.js?v=2"></script>
-  <script src="/js/app.js?v=2"></script>
+  <script src="/js/games-data.js?v=3"></script>
+  <script src="/js/gamepad.js?v=3"></script>
+  <script src="/js/app.js?v=3"></script>
 </body>
 </html>

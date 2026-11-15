@@ -1,13 +1,13 @@
-const CACHE_NAME = 'neon-arcade-v2';
+const CACHE_NAME = 'neon-arcade-v3';
 const ASSETS = [
   '/',
   '/index.html',
   '/manifest.json',
-  '/css/cyberpunk.css?v=2',
-  '/css/gamepad.css?v=2',
-  '/js/games-data.js?v=2',
-  '/js/gamepad.js?v=2',
-  '/js/app.js?v=2',
+  '/css/cyberpunk.css?v=3',
+  '/css/gamepad.css?v=3',
+  '/js/games-data.js?v=3',
+  '/js/gamepad.js?v=3',
+  '/js/app.js?v=3',
   '/assets/icons/icon-192.svg',
   '/assets/icons/icon-512.svg'
 ];

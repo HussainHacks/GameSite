@@ -313,12 +313,22 @@ body::before {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
   font-size: 12px;
   color: var(--text-dim);
+}
+.stat-status {
+  white-space: nowrap;
+}
+.stat-divider {
+  color: rgba(0, 240, 255, 0.3);
+  font-weight: 700;
+  display: none;
 }
 .games-counter {
   color: var(--neon-green);
   font-weight: 800;
+  white-space: nowrap;
 }
 
 /* Games Grid */
@@ -606,8 +616,20 @@ body::before {
   display: block;
 }
 
+.focus-hint {
+  text-align: center;
+  font-size: 11px;
+  color: var(--text-dim);
+  padding: 6px 12px;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid rgba(0, 240, 255, 0.1);
+  background: rgba(10, 14, 26, 0.7);
+  flex-shrink: 0;
+  width: 100%;
+}
+
 .modal-footer {
-  padding: 24px 20px 80px 20px;
+  padding: 24px 24px 90px 24px;
   background: var(--bg-hud);
   border-top: 1px solid rgba(0, 240, 255, 0.2);
   display: flex;
@@ -617,6 +639,7 @@ body::before {
   flex-shrink: 0;
   width: 100%;
   min-height: 280px;
+  box-sizing: border-box;
 }
 
 .modal-license-info {
@@ -624,6 +647,7 @@ body::before {
   align-items: center;
   flex-wrap: wrap;
   gap: 8px;
+  padding-right: 140px;
 }
 
 .modal-license-info a {
@@ -632,12 +656,45 @@ body::before {
 }
 .modal-license-info a:hover { text-decoration: underline; }
 
+/* Cyberpunk Floating Toast Notification */
+.cyber-toast {
+  position: fixed;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: rgba(14, 20, 38, 0.95);
+  border: 1px solid var(--neon-cyan);
+  box-shadow: 0 0 15px rgba(0, 240, 255, 0.4), inset 0 0 10px rgba(0, 240, 255, 0.2);
+  color: #fff;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: 1px;
+  z-index: 1000;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+.cyber-toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+#nl-badge-frame {
+  z-index: 99 !important;
+  bottom: 8px !important;
+  right: 12px !important;
+}
+
 @media (max-width: 767px) {
   .modal-header {
-    padding: 8px 10px;
+    padding: 6px 10px;
     gap: 6px;
     flex-wrap: nowrap;
     min-height: 44px;
+    box-sizing: border-box;
   }
 
   .modal-title-box {
@@ -693,9 +750,13 @@ body::before {
   }
 
   .modal-footer {
-    padding: 14px 14px 44px 14px;
+    padding: 16px 16px 85px 16px;
     font-size: 11px;
     gap: 10px;
+  }
+
+  .modal-license-info {
+    padding-right: 120px;
   }
 }
 
