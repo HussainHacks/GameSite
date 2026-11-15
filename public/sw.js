@@ -1,13 +1,13 @@
-const CACHE_NAME = 'neon-arcade-v3';
+const CACHE_NAME = 'neon-arcade-v4';
 const ASSETS = [
   '/',
   '/index.html',
   '/manifest.json',
-  '/css/cyberpunk.css?v=3',
-  '/css/gamepad.css?v=3',
-  '/js/games-data.js?v=3',
-  '/js/gamepad.js?v=3',
-  '/js/app.js?v=3',
+  '/css/cyberpunk.css?v=4',
+  '/css/gamepad.css?v=4',
+  '/js/games-data.js?v=4',
+  '/js/gamepad.js?v=4',
+  '/js/app.js?v=4',
   '/assets/icons/icon-192.svg',
   '/assets/icons/icon-512.svg'
 ];
@@ -32,7 +32,9 @@ self.addEventListener('activate', (e) => {
 self.addEventListener('fetch', (e) => {
   const url = new URL(e.request.url);
 
-  // Network first for API, HTML navigation, and JS data
+  // Network first for API, HTML navigation, and JS data.
+  // cache: no-store bypasses the browser HTTP cache, which otherwise
+  // serves a day old copy of the catalog to returning visitors.
   if (
     e.request.mode === 'navigate' ||
     url.pathname === '/' ||
@@ -41,7 +43,7 @@ self.addEventListener('fetch', (e) => {
     url.pathname.startsWith('/api/')
   ) {
     e.respondWith(
-      fetch(e.request)
+      fetch(e.request, { cache: 'no-store' })
         .then((fetchRes) => {
           if (fetchRes.status === 200 && url.origin === self.location.origin) {
             const clone = fetchRes.clone();
